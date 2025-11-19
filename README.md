@@ -70,7 +70,17 @@ jobs:
           # else use standard llm model
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL: gpt-3.5-turbo # https://platform.openai.com/docs/models
+          MODEL: gpt-4o # https://platform.openai.com/docs/models
+          # Supported models include:
+          # - gpt-4o, gpt-4o-mini (recommended for most use cases)
+          # - gpt-3.5-turbo
+          # - gpt-5.1, gpt-5.1-codex, gpt-5.1-codex-mini (latest models with enhanced reasoning)
+          # - gpt-5-pro (highest performance, premium pricing for complex reviews)
+          # Note: GPT-5.1 and GPT-5 Pro models require API access and have higher costs
+          #
+          # ⚠️ IMPORTANT: GPT-5.1 models require code migration to Responses API for optimal performance
+          # See GPT-5.1-MIGRATION-REQUIRED.md for details. GPT-5.1 will work with current code
+          # but without reasoning optimization, resulting in higher costs and lower performance.
 
           # common
           LANGUAGE: Chinese

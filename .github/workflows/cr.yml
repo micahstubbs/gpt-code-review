@@ -3,20 +3,44 @@ name: Code Review
 permissions:
   contents: read
   pull-requests: write
-  models: read
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
 jobs:
-  test:
+  code-review:
+    # Only run on PRs authored by micahstubbs
+    if: github.event.pull_request.user.login == 'micahstubbs'
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build action
+        run: yarn build
+
+      - name: Run code review with GPT-5.1 Codex
+        uses: ./
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: gpt-5.1-codex
           LANGUAGE: English
-          USE_GITHUB_MODELS: true
-          LOG_LEVEL: debug
-          INCLUDE_PATTERNS: src/*,.github/**/*
+          REASONING_EFFORT: medium
+          VERBOSITY: medium
+          MAX_PATCH_LENGTH: 10000
+          PROMPT: Please review the following code patch for bugs, security issues, and improvements. Focus on code quality and best practices.
+          IGNORE_PATTERNS: node_modules/**/*,*.md,yarn.lock,package-lock.json,dist/**/*,action/**/*
+          INCLUDE_PATTERNS: src/**/*,test/**/*,.github/**/*

@@ -1,0 +1,47 @@
+# Example GitHub Actions workflow using GPT-5.1-Codex-Mini (Cost-Effective)
+#
+# This configuration uses gpt-5.1-codex-mini which provides excellent code review
+# at a fraction of the cost of gpt-5.1-codex.
+#
+# Pricing: $0.25/$2 per 1M tokens (vs $1.25/$10 for gpt-5.1-codex)
+# Perfect for: Budget-conscious teams, high-volume repositories, smaller PRs
+#
+# To use this workflow:
+# 1. Copy this file to .github/workflows/cr.yml in your repository
+# 2. Add your OPENAI_API_KEY to GitHub Secrets
+# 3. Ensure your OpenAI account has access to GPT-5.1 models
+
+name: Code Review with GPT-5.1-Codex-Mini
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anc95/ChatGPT-CodeReview@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+          # Model Configuration - Cost-Effective Option
+          MODEL: gpt-5.1-codex-mini
+
+          # Review Settings
+          LANGUAGE: English
+
+          # Model Parameters
+          temperature: 0.8
+          top_p: 0.95
+          max_tokens: 8000
+
+          # Cost Optimization
+          MAX_PATCH_LENGTH: 12000  # Limit review scope to manage costs
+          INCLUDE_PATTERNS: src/**/*  # Review only source code
+          IGNORE_PATTERNS: **/*.test.*,**/*.spec.*,**/node_modules/**,**/*.md,**/*.json

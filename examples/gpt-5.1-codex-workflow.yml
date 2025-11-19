@@ -1,0 +1,52 @@
+# Example GitHub Actions workflow using GPT-5.1-Codex for code review
+#
+# To use this workflow:
+# 1. Copy this file to .github/workflows/cr.yml in your repository
+# 2. Add your OPENAI_API_KEY to GitHub Secrets
+# 3. Ensure your OpenAI account has access to GPT-5.1 models
+# 4. Adjust the MODEL variable based on your needs:
+#    - gpt-5.1-codex: Best quality, higher cost
+#    - gpt-5.1-codex-mini: Good quality, lower cost
+#    - gpt-5.1: General purpose model
+
+name: Code Review with GPT-5.1-Codex
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anc95/ChatGPT-CodeReview@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+          # Model Configuration
+          MODEL: gpt-5.1-codex  # or gpt-5.1-codex-mini for cost savings
+
+          # Review Settings
+          LANGUAGE: English
+          PROMPT: |
+            Perform a comprehensive code review focusing on:
+            1. Security vulnerabilities
+            2. Potential bugs and edge cases
+            3. Performance optimizations
+            4. Code quality and best practices
+            5. Maintainability concerns
+
+          # Model Parameters
+          temperature: 0.7      # Balanced creativity/consistency
+          top_p: 0.9           # Slightly more deterministic
+          max_tokens: 10000    # Allow detailed reviews
+
+          # Review Scope
+          MAX_PATCH_LENGTH: 15000
+          INCLUDE_PATTERNS: src/**/*.ts,src/**/*.js,src/**/*.tsx,src/**/*.jsx
+          IGNORE_PATTERNS: **/*.test.ts,**/*.spec.ts,**/*.test.js,**/node_modules/**,**/*.md
