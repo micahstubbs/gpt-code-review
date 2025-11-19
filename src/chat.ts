@@ -1,5 +1,5 @@
 import { OpenAI, AzureOpenAI } from 'openai';
-import { isReasoningModel, getEnv, safeJsonParse } from './utils.js';
+import { isReasoningModel, safeJsonParse } from './utils.js';
 
 export class Chat {
   private openai: OpenAI | AzureOpenAI;
