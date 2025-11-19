@@ -24,6 +24,33 @@ export interface CodeQualityScore {
 }
 
 /**
+ * Reviewer authorization information
+ * Used to verify LGTM comes from authorized reviewers
+ */
+export interface ReviewerAuth {
+  /**
+   * Whether the reviewer is verified (server-side GitHub authorization)
+   */
+  isVerified: boolean;
+
+  /**
+   * Reviewer's GitHub login
+   */
+  login: string;
+
+  /**
+   * Whether the reviewer has write/admin permissions on the repo
+   */
+  hasWriteAccess: boolean;
+
+  /**
+   * Cryptographic signature or token proving authorization
+   * Should be verified server-side against GitHub's API
+   */
+  authToken?: string;
+}
+
+/**
  * Analyzes review content to extract severity levels
  * Uses pattern matching and NLP techniques to categorize issues
  */
@@ -81,10 +108,21 @@ export function analyzeReviewSeverity(reviewComment: string): {
 /**
  * Calculates code quality score based on review metrics
  * Uses weighted scoring algorithm with adaptive thresholds
+ *
+ * SECURITY: LGTM scoring requires verified reviewer authorization.
+ * Do NOT trust LGTM from parsed comment content - require server-side
+ * verification via GitHub API (reviewer permissions, signed events).
+ *
+ * @param reviewComment - The review comment text to analyze
+ * @param lgtm - LGTM flag (deprecated - use reviewerAuth instead)
+ * @param reviewerAuth - Server-side verified reviewer authorization (optional)
+ * @param requiredApprovers - Minimum number of authorized approvers (default: 1)
  */
 export function calculateQualityScore(
   reviewComment: string,
-  lgtm: boolean
+  lgtm: boolean,
+  reviewerAuth?: ReviewerAuth,
+  requiredApprovers: number = 1
 ): CodeQualityScore {
   const severity = analyzeReviewSeverity(reviewComment);
 
@@ -101,14 +139,34 @@ export function calculateQualityScore(
     score += Math.floor(severity.critical.length - 3) * 5; // Soften penalty
   }
 
-  // LGTM bonus with validation
-  if (lgtm && severity.critical.length === 0) {
+  // LGTM bonus - ONLY if reviewer is verified and authorized
+  // SECURITY: Never trust LGTM from parsed comment content alone
+  const isAuthorizedLgtm = reviewerAuth
+    ? (reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm)
+    : false; // Default to false if no auth provided
+
+  if (isAuthorizedLgtm && severity.critical.length === 0) {
     score = Math.min(100, score + 10);
   }
 
-  // Penalty for LGTM with critical issues (inconsistency)
+  // Penalty for LGTM with critical issues (inconsistency or security bypass attempt)
   if (lgtm && severity.critical.length > 0) {
-    score -= 20; // Deduct for false positive LGTM
+    if (isAuthorizedLgtm) {
+      // Authorized reviewer made a mistake - moderate penalty
+      score -= 10;
+    } else {
+      // Unauthorized LGTM with critical issues - severe penalty (potential security bypass)
+      score -= 25;
+    }
+  }
+
+  // Warn if using deprecated lgtm without authorization
+  if (lgtm && !reviewerAuth) {
+    console.warn(
+      'SECURITY WARNING: LGTM scoring without reviewer authorization. ' +
+      'This is insecure and should not be used in production. ' +
+      'Pass reviewerAuth parameter with server-side verified permissions.'
+    );
   }
 
   // Ensure score is in valid range
@@ -168,5 +226,64 @@ export function aggregateReviewMetrics(
     suggestions,
     lgtmRate: reviews.length > 0 ? lgtmCount / reviews.length : 0,
     averageReviewTime: reviews.length > 0 ? totalTime / reviews.length : 0
+  };
+}
+
+/**
+ * Verifies reviewer authorization from GitHub API
+ * SECURITY: This function MUST query GitHub's API server-side to verify permissions.
+ * Never trust client-provided authorization data.
+ *
+ * @param githubLogin - Reviewer's GitHub login
+ * @param repoOwner - Repository owner
+ * @param repoName - Repository name
+ * @param githubToken - GitHub API token with repo permissions
+ * @returns Verified reviewer authorization
+ *
+ * @example
+ * ```typescript
+ * // Server-side verification required
+ * const auth = await verifyReviewerAuthorization(
+ *   'reviewer-login',
+ *   'owner',
+ *   'repo',
+ *   process.env.GITHUB_TOKEN
+ * );
+ *
+ * const score = calculateQualityScore(
+ *   reviewComment,
+ *   lgtm,
+ *   auth  // Only use if verified server-side
+ * );
+ * ```
+ */
+export async function verifyReviewerAuthorization(
+  githubLogin: string,
+  repoOwner: string,
+  repoName: string,
+  githubToken: string
+): Promise<ReviewerAuth> {
+  // This is a placeholder - in production, this MUST call GitHub API
+  // Example: GET /repos/{owner}/{repo}/collaborators/{username}/permission
+
+  // SECURITY: Replace this with actual GitHub API call
+  // const response = await fetch(
+  //   `https://api.github.com/repos/${repoOwner}/${repoName}/collaborators/${githubLogin}/permission`,
+  //   { headers: { Authorization: `token ${githubToken}` } }
+  // );
+  // const data = await response.json();
+  // const hasWriteAccess = ['admin', 'write'].includes(data.permission);
+
+  console.warn(
+    'SECURITY WARNING: verifyReviewerAuthorization is not fully implemented. ' +
+    'This placeholder MUST be replaced with actual GitHub API verification before production use.'
+  );
+
+  // Placeholder return - INSECURE, must implement actual API verification
+  return {
+    isVerified: false, // Set to false until implemented
+    login: githubLogin,
+    hasWriteAccess: false, // Must query GitHub API
+    authToken: undefined // Must verify signed GitHub event
   };
 }
