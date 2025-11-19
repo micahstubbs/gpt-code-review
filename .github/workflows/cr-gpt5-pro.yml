@@ -1,0 +1,55 @@
+name: Code Review (GPT-5 Pro)
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  code-review-gpt5-pro:
+    # Only run on PRs authored by micahstubbs with 'gpt-5-pro' label
+    if: |
+      github.event.pull_request.user.login == 'micahstubbs' &&
+      contains(github.event.pull_request.labels.*.name, 'gpt-5-pro')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build action
+        run: yarn build
+
+      - name: Run code review with GPT-5 Pro
+        uses: ./
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: gpt-5-pro
+          LANGUAGE: English
+          REASONING_EFFORT: high
+          VERBOSITY: high
+          MAX_PATCH_LENGTH: 20000
+          PROMPT: |
+            Please perform an in-depth code review focusing on:
+            1. Security vulnerabilities and attack vectors
+            2. Algorithm efficiency and potential performance issues
+            3. Edge cases and error handling
+            4. Code maintainability and architectural concerns
+            5. Testing gaps and quality assurance
+            Provide detailed analysis with specific examples and recommendations.
+          IGNORE_PATTERNS: node_modules/**/*,*.md,yarn.lock,package-lock.json,dist/**/*,action/**/*
+          INCLUDE_PATTERNS: src/**/*,test/**/*,.github/**/*
