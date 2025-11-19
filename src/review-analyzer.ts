@@ -80,7 +80,7 @@ export function analyzeReviewSeverity(reviewComment: string): {
 
 /**
  * Calculates code quality score based on review metrics
- * Uses weighted scoring algorithm
+ * Uses weighted scoring algorithm with adaptive thresholds
  */
 export function calculateQualityScore(
   reviewComment: string,
@@ -90,14 +90,25 @@ export function calculateQualityScore(
 
   let score = 100;
 
-  // Deduct points based on issues found
+  // Deduct points based on issues found with severity weighting
   score -= severity.critical.length * 30; // Critical issues: -30 points each
   score -= severity.warnings.length * 15; // Warnings: -15 points each
   score -= severity.suggestions.length * 5; // Suggestions: -5 points each
 
-  // LGTM bonus
+  // Apply diminishing returns for multiple issues of same type
+  // This prevents unfairly harsh scoring when multiple related issues exist
+  if (severity.critical.length > 3) {
+    score += Math.floor(severity.critical.length - 3) * 5; // Soften penalty
+  }
+
+  // LGTM bonus with validation
   if (lgtm && severity.critical.length === 0) {
     score = Math.min(100, score + 10);
+  }
+
+  // Penalty for LGTM with critical issues (inconsistency)
+  if (lgtm && severity.critical.length > 0) {
+    score -= 20; // Deduct for false positive LGTM
   }
 
   // Ensure score is in valid range
