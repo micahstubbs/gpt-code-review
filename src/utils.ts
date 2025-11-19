@@ -30,11 +30,32 @@ export function formatError(error: unknown, context?: string): string {
  */
 export function safeJsonParse<T>(jsonString: string, fallback: T): T {
   try {
-    return JSON.parse(jsonString) as T;
+    const parsed = JSON.parse(jsonString);
+    return parsed as T;
   } catch (error) {
     console.error('JSON parse error:', formatError(error));
+    console.error('Failed input:', truncateString(jsonString, 100));
     return fallback;
   }
+}
+
+/**
+ * Validates that a value is a non-empty string
+ * @param value - Value to validate
+ * @param fieldName - Name of the field for error message
+ * @returns The validated string
+ * @throws Error if validation fails
+ */
+export function validateNonEmptyString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} must be a string, got ${typeof value}`);
+  }
+
+  if (value.trim().length === 0) {
+    throw new Error(`${fieldName} cannot be empty`);
+  }
+
+  return value;
 }
 
 /**
