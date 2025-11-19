@@ -1,0 +1,150 @@
+# Example GitHub Actions workflow using GPT-5 Pro (Premium Tier)
+#
+# GPT-5 Pro is the highest-performance model with extended reasoning capabilities.
+# It uses parallel test-time compute for maximum accuracy on complex code reviews.
+#
+# PRICING WARNING: $15/$120 per 1M tokens (12x more expensive than GPT-5.1-Codex)
+# Use this ONLY for critical reviews where accuracy is paramount.
+#
+# Best for:
+# - Security audits and vulnerability assessments
+# - Major architectural reviews
+# - Production release PRs
+# - Complex refactoring with business impact
+# - Abstract problem solving requiring novel solutions
+#
+# To use this workflow:
+# 1. Copy this file to .github/workflows/cr-critical.yml (separate from daily reviews)
+# 2. Add your OPENAI_API_KEY to GitHub Secrets
+# 3. Ensure your OpenAI account has access to GPT-5 Pro
+# 4. Trigger manually or use labels to control when it runs
+# 5. Monitor costs closely in OpenAI dashboard
+
+name: Critical Code Review with GPT-5 Pro
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    # Optional: Only run on specific branches
+    branches:
+      - main
+      - production
+      - release/**
+
+jobs:
+  critical-review:
+    # IMPORTANT: Use labels to control when GPT-5 Pro runs
+    # This prevents accidental high costs on routine PRs
+    if: ${{ contains(github.event.*.labels.*.name, 'critical-review') || contains(github.event.*.labels.*.name, 'security-audit') }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: anc95/ChatGPT-CodeReview@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+          # Model Configuration - Premium Tier
+          MODEL: gpt-5-pro
+
+          # Review Settings - Comprehensive Analysis
+          LANGUAGE: English
+          PROMPT: |
+            You are performing a CRITICAL code review for a production system.
+            This review must be thorough and uncompromising.
+
+            Analyze the following code diff with maximum scrutiny:
+
+            1. SECURITY VULNERABILITIES (CRITICAL PRIORITY)
+               - Authentication and authorization flaws
+               - SQL injection, XSS, CSRF vulnerabilities
+               - Insecure data handling and storage
+               - Secrets or credentials in code
+               - OWASP Top 10 vulnerabilities
+
+            2. CORRECTNESS & RELIABILITY
+               - Logic errors and edge cases
+               - Race conditions and concurrency issues
+               - Error handling completeness
+               - Data integrity concerns
+               - Potential for data loss or corruption
+
+            3. PERFORMANCE & SCALABILITY
+               - Performance bottlenecks
+               - Memory leaks or inefficient algorithms
+               - Database query optimization
+               - Caching opportunities
+               - Scalability limitations
+
+            4. ARCHITECTURE & DESIGN
+               - Design pattern violations
+               - Coupling and cohesion issues
+               - SOLID principle violations
+               - Technical debt introduction
+               - Future maintainability concerns
+
+            5. COMPLIANCE & STANDARDS
+               - Industry best practices
+               - Security standards (PCI-DSS, HIPAA, SOC2)
+               - Regulatory compliance
+               - Code style and conventions
+
+            For each issue found:
+            - Severity: CRITICAL, HIGH, MEDIUM, or LOW
+            - Impact: Production risk assessment
+            - Recommendation: Specific, actionable fix
+
+            Prioritize findings by risk to production systems.
+
+          # Model Parameters - Optimized for accuracy
+          temperature: 0.5      # Lower for more consistent, focused analysis
+          top_p: 0.85          # More deterministic for critical reviews
+          max_tokens: 15000    # Allow comprehensive detailed reviews
+
+          # Review Scope - Comprehensive
+          MAX_PATCH_LENGTH: 25000  # Allow larger diffs for GPT-5 Pro's reasoning
+
+          # Include all production code
+          INCLUDE_PATTERNS: src/**/*,lib/**/*,app/**/*,api/**/*,config/**/*
+
+          # Exclude only test files and documentation
+          IGNORE_PATTERNS: |
+            **/*.test.*,
+            **/*.spec.*,
+            **/node_modules/**,
+            **/__tests__/**,
+            **/__mocks__/**,
+            **/test/**,
+            **/tests/**,
+            **/*.md,
+            **/docs/**
+
+      # Post a comment summarizing the cost of this review
+      - name: Cost Transparency
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `
+            ## GPT-5 Pro Review Completed
+
+            ⚠️ **Premium Model Used**: This review used GPT-5 Pro for maximum accuracy.
+
+            **Expected cost**: $15-$120 per 1M tokens (depending on output length)
+
+            Please review the findings carefully as this was a high-cost, high-accuracy analysis.
+
+            For routine PRs, consider using \`gpt-5.1-codex-mini\` to reduce costs by 98%.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
