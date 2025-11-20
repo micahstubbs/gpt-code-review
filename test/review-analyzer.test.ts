@@ -553,7 +553,8 @@ describe('review-analyzer', () => {
 
       test('should handle multiple security critical issues', () => {
         // Review with 2 security critical issues
-        const reviewComment = 'CRITICAL: Security flaw in authentication. CRITICAL: Security issue with input validation.';
+        const reviewComment = `CRITICAL: Security flaw in authentication
+CRITICAL: Security issue with input validation`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Security breakdown should be: 100 - (2 * 40) = 20
@@ -562,7 +563,9 @@ describe('review-analyzer', () => {
 
       test('should not go below zero', () => {
         // Review with 3 security critical issues (would be -20 without Math.max)
-        const reviewComment = 'CRITICAL: Security flaw 1. CRITICAL: Security flaw 2. CRITICAL: Security flaw 3.';
+        const reviewComment = `CRITICAL: Security flaw 1
+CRITICAL: Security flaw 2
+CRITICAL: Security flaw 3`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Security breakdown should be: Math.max(0, 100 - (3 * 40)) = 0
@@ -573,7 +576,8 @@ describe('review-analyzer', () => {
     describe('Maintainability breakdown', () => {
       test('should start from 100 and deduct only for warnings', () => {
         // Review with 2 warnings (should deduct 10 points each)
-        const reviewComment = 'Warning: Code duplication detected. Warning: Complex function should be refactored.';
+        const reviewComment = `Warning: Code duplication detected
+Warning: Complex function should be refactored`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Maintainability breakdown should be: 100 - (2 * 10) = 80
@@ -591,7 +595,9 @@ describe('review-analyzer', () => {
 
       test('should not be affected by overall score deductions', () => {
         // Review with critical issues that lower overall score, but only 1 warning
-        const reviewComment = 'CRITICAL: Major bug. CRITICAL: Another bug. Warning: Minor code smell.';
+        const reviewComment = `CRITICAL: Major bug
+CRITICAL: Another bug
+Warning: Minor code smell`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Even though overall score is low, maintainability should only reflect warnings
@@ -601,7 +607,9 @@ describe('review-analyzer', () => {
 
       test('should count all warnings including performance and others', () => {
         // Review with multiple types of warnings
-        const reviewComment = 'Warning: Performance issue. Warning: Code duplication. Warning: Lack of error handling.';
+        const reviewComment = `Warning: Performance issue
+Warning: Code duplication
+Warning: Lack of error handling`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Maintainability breakdown should be: 100 - (3 * 10) = 70
@@ -630,7 +638,8 @@ describe('review-analyzer', () => {
 
       test('should handle multiple performance warnings', () => {
         // Review with 2 performance warnings
-        const reviewComment = 'Warning: Performance issue in database query. Warning: Performance degradation in loop.';
+        const reviewComment = `Warning: Performance issue in database query
+Warning: Performance degradation in loop`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Performance breakdown should be: 100 - (2 * 20) = 60
@@ -639,7 +648,9 @@ describe('review-analyzer', () => {
 
       test('should not be affected by non-performance issues', () => {
         // Review with multiple non-performance issues
-        const reviewComment = 'CRITICAL: Security flaw. Warning: Code duplication. Warning: Lack of tests.';
+        const reviewComment = `CRITICAL: Security flaw
+Warning: Code duplication
+Warning: Lack of tests`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Performance breakdown should remain 100 (no performance warnings)
@@ -650,7 +661,9 @@ describe('review-analyzer', () => {
     describe('Testability breakdown', () => {
       test('should start from 100 and deduct only test-related suggestions', () => {
         // Review with 2 test suggestions (should deduct 10 points each)
-        const reviewComment = 'Suggestion: Add unit tests for this function. Suggestion: Test edge cases.';
+        // Note: avoid "edge case" as it triggers warning category
+        const reviewComment = `Suggestion: Add unit tests for this function
+Suggestion: Test error handling paths`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Testability breakdown should be: 100 - (2 * 10) = 80
@@ -659,7 +672,8 @@ describe('review-analyzer', () => {
 
       test('should return 100 when there are no test-related suggestions', () => {
         // Review with non-test suggestions
-        const reviewComment = 'Suggestion: Add documentation. Suggestion: Consider using a more descriptive variable name.';
+        const reviewComment = `Suggestion: Add documentation
+Suggestion: Consider using a more descriptive variable name`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Testability breakdown should remain 100 (no test suggestions)
@@ -668,7 +682,10 @@ describe('review-analyzer', () => {
 
       test('should handle multiple test-related suggestions', () => {
         // Review with 3 test suggestions
-        const reviewComment = 'Suggestion: Add tests. Suggestion: Test error handling. Suggestion: Test edge cases.';
+        // Note: avoid "edge case" as it triggers warning category
+        const reviewComment = `Suggestion: Add tests
+Suggestion: Test error handling
+Suggestion: Test boundary conditions`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Testability breakdown should be: 100 - (3 * 10) = 70
@@ -689,7 +706,11 @@ describe('review-analyzer', () => {
       test('breakdown scores should be independent of overall score', () => {
         // Review with heavy maintainability penalties (many warnings)
         // but no security issues
-        const reviewComment = 'Warning: Issue 1. Warning: Issue 2. Warning: Issue 3. Warning: Issue 4. Warning: Issue 5.';
+        const reviewComment = `Warning: Issue 1
+Warning: Issue 2
+Warning: Issue 3
+Warning: Issue 4
+Warning: Issue 5`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Overall score should be low: 100 - (5 * 15) = 25
@@ -707,11 +728,11 @@ describe('review-analyzer', () => {
 
       test('each dimension should reflect only its relevant issues', () => {
         // Complex review with issues in all dimensions
-        const reviewComment =
-          'CRITICAL: Security vulnerability found. ' +
-          'Warning: Performance bottleneck detected. ' +
-          'Warning: Code duplication. ' +
-          'Suggestion: Add test coverage.';
+        // Note: each issue must be on its own line for proper categorization
+        const reviewComment = `CRITICAL: Security vulnerability found
+Warning: Performance bottleneck detected
+Warning: Code duplication
+Suggestion: Add test coverage`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Security: 100 - (1 * 40) = 60
@@ -729,7 +750,8 @@ describe('review-analyzer', () => {
 
       test('breakdown should not inherit penalties from other dimensions', () => {
         // Review with only security issues
-        const reviewComment = 'CRITICAL: Security flaw. CRITICAL: Another security issue.';
+        const reviewComment = `CRITICAL: Security flaw
+CRITICAL: Another security issue`;
         const result = calculateQualityScore(reviewComment, false);
 
         // Overall score: 100 - (2 * 30) = 40
