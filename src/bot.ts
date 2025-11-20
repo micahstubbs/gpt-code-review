@@ -2,6 +2,7 @@ import { Context, Probot } from 'probot';
 import { minimatch } from 'minimatch'
 
 import { Chat } from './chat.js';
+import { formatReviewComment } from './review-formatter.js';
 import log from 'loglevel';
 
 const OPENAI_API_KEY = 'OPENAI_API_KEY';
@@ -162,7 +163,7 @@ export const robot = (app: Probot) => {
         }
         try {
           const res = await chat?.codeReview(patch);
-          if (!res.lgtm && !!res.review_comment) {
+          if (!res.lgtm && (!!res.review_comment || res.issues?.length > 0)) {
             // Calculate safe position: use first non-header line of patch
             // Patch format: starts with @@ line, then diff lines
             const patchLines = patch.split('\n');
@@ -178,9 +179,21 @@ export const robot = (app: Probot) => {
             // Ensure position is within valid range
             position = Math.min(position, patchLines.length);
 
+            // Format comment using formatter if structured data exists
+            let commentBody: string;
+            if (res.issues && res.issues.length >= 0) {
+              commentBody = formatReviewComment({
+                issues: res.issues,
+                details: res.details || res.review_comment,
+              });
+            } else {
+              // Fall back to legacy format for backward compatibility
+              commentBody = res.review_comment;
+            }
+
             ress.push({
               path: file.filename,
-              body: res.review_comment,
+              body: commentBody,
               position: position,
             })
           }
