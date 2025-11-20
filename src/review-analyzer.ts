@@ -55,6 +55,8 @@ export interface ReviewerAuth {
 /**
  * Analyzes review content to extract severity levels
  * Uses pattern matching and NLP techniques to categorize issues
+ *
+ * Issue #15: Input validation and ReDoS protection
  */
 export function analyzeReviewSeverity(reviewComment: string): {
   critical: string[];
