@@ -26,17 +26,10 @@ const SEVERITY_WEIGHTS = {
 } as const;
 
 const SCORING_CONFIG = {
-  // Severity weights
-  CRITICAL_BASE_WEIGHT: 30,
-  CRITICAL_THRESHOLD: 3,
-  // Softening factor: 5/30 = 0.1667 (approximately 16.67% reduction)
-  // Results in softened weight of 25 (30 - 5)
-  SOFTEN_FACTOR: 5 / 30,
-  WARNING_WEIGHT: 15,
-  SUGGESTION_WEIGHT: 5,
+  // Softening threshold
+  SOFTENING_THRESHOLD: 3, // Number of issues before softening kicks in
 
   // LGTM scoring
-  SOFTENING_THRESHOLD: 3, // Number of issues before softening kicks in
   LGTM_BONUS: 10,
   LGTM_WITH_CRITICALS_PENALTY: 10,
 

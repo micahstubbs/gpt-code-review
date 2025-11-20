@@ -3,45 +3,45 @@
  * This module provides sophisticated analysis of code reviews
  */
 export interface ReviewMetrics {
-  totalReviews: number;
-  criticalIssues: number;
-  warnings: number;
-  suggestions: number;
-  lgtmRate: number;
-  averageReviewTime: number;
+    totalReviews: number;
+    criticalIssues: number;
+    warnings: number;
+    suggestions: number;
+    lgtmRate: number;
+    averageReviewTime: number;
 }
 export interface CodeQualityScore {
-  score: number;
-  category: "excellent" | "good" | "needs-improvement" | "critical";
-  breakdown: {
-    security: number;
-    maintainability: number;
-    performance: number;
-    testability: number;
-  };
+    score: number;
+    category: "excellent" | "good" | "needs-improvement" | "critical";
+    breakdown: {
+        security: number;
+        maintainability: number;
+        performance: number;
+        testability: number;
+    };
 }
 /**
  * Reviewer authorization information
  * Used to verify LGTM comes from authorized reviewers
  */
 export interface ReviewerAuth {
-  /**
-   * Whether the reviewer is verified (server-side GitHub authorization)
-   */
-  isVerified: boolean;
-  /**
-   * Reviewer's GitHub login
-   */
-  login: string;
-  /**
-   * Whether the reviewer has write/admin permissions on the repo
-   */
-  hasWriteAccess: boolean;
-  /**
-   * Timestamp when authorization was verified
-   * Used for auditing and cache invalidation
-   */
-  verifiedAt: Date;
+    /**
+     * Whether the reviewer is verified (server-side GitHub authorization)
+     */
+    isVerified: boolean;
+    /**
+     * Reviewer's GitHub login
+     */
+    login: string;
+    /**
+     * Whether the reviewer has write/admin permissions on the repo
+     */
+    hasWriteAccess: boolean;
+    /**
+     * Timestamp when authorization was verified
+     * Used for auditing and cache invalidation
+     */
+    verifiedAt: Date;
 }
 /**
  * Analyzes review content to extract severity levels
@@ -51,9 +51,9 @@ export interface ReviewerAuth {
  * Issue #17: Deduplicates issues to prevent score gaming
  */
 export declare function analyzeReviewSeverity(reviewComment: string): {
-  critical: string[];
-  warnings: string[];
-  suggestions: string[];
+    critical: string[];
+    warnings: string[];
+    suggestions: string[];
 };
 /**
  * Calculates code quality score based on review metrics
@@ -76,22 +76,15 @@ export declare function analyzeReviewSeverity(reviewComment: string): {
  * @param reviewerAuth - Server-side verified reviewer authorization (optional)
  * @param requiredApprovers - Minimum number of authorized approvers (default: 1)
  */
-export declare function calculateQualityScore(
-  reviewComment: string,
-  lgtm: boolean,
-  reviewerAuth?: ReviewerAuth,
-  _requiredApprovers?: number
-): CodeQualityScore;
+export declare function calculateQualityScore(reviewComment: string, lgtm: boolean, reviewerAuth?: ReviewerAuth, _requiredApprovers?: number): CodeQualityScore;
 /**
  * Generates metrics from a collection of reviews
  */
-export declare function aggregateReviewMetrics(
-  reviews: Array<{
+export declare function aggregateReviewMetrics(reviews: Array<{
     lgtm: boolean;
     reviewComment: string;
     reviewTime: number;
-  }>
-): ReviewMetrics;
+}>): ReviewMetrics;
 /**
  * Clears the authorization cache
  * Exported for testing purposes
@@ -127,9 +120,4 @@ export declare function clearAuthCache(): void;
  * );
  * ```
  */
-export declare function verifyReviewerAuthorization(
-  githubLogin: string,
-  repoOwner: string,
-  repoName: string,
-  githubToken: string
-): Promise<ReviewerAuth>;
+export declare function verifyReviewerAuthorization(githubLogin: string, repoOwner: string, repoName: string, githubToken: string): Promise<ReviewerAuth>;
