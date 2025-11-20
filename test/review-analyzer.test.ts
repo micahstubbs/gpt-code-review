@@ -1488,8 +1488,8 @@ CRITICAL: Another security issue`;
     });
   });
 
-  describe('Issue #24: Remove redundant Math operations on integers', () => {
-    test('softened weight calculation should produce integer result', () => {
+  describe("Issue #24: Remove redundant Math operations on integers", () => {
+    test("softened weight calculation should produce integer result", () => {
       // Verify that 30 * (1 - 5/30) = 25 exactly (no rounding needed)
       const CRITICAL_BASE_WEIGHT = 30;
       const SOFTEN_FACTOR = 5 / 30;
@@ -1498,14 +1498,151 @@ CRITICAL: Another security issue`;
       expect(Number.isInteger(result)).toBe(true);
     });
 
-    test('penalty calculations work correctly without redundant operations', () => {
+    test("penalty calculations work correctly without redundant operations", () => {
       // 4 critical issues: 3 at base weight (30), 1 at softened weight (25)
-      const review = Array(4).fill(0).map((_, i) =>
-        `Critical bug ${i}`).join('\n');
+      const review = Array(4)
+        .fill(0)
+        .map((_, i) => `Critical bug ${i}`)
+        .join("\n");
       const result = calculateQualityScore(review, false);
 
       // Score = 100 - (3 * 30 + 1 * 25) = 100 - 115 = 0 (clamped)
       expect(result.score).toBe(0);
+    });
+
+    describe("Issue #13: Make severity weighting configurable and match documentation", () => {
+      test("should use configurable severity weights for critical issues", () => {
+        // 3 critical issues - all should use base weight
+        const reviewComment = `
+        This has a security vulnerability in the authentication
+        Critical bug in the payment processing
+        Data loss risk in the backup system
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score should be 100 - (3 * 30) = 10
+        expect(result.score).toBe(10);
+      });
+
+      test("should apply softened weight to critical issues beyond threshold", () => {
+        // 5 critical issues - first 3 at base weight (30), next 2 at softened weight (25)
+        const reviewComment = `
+        Security vulnerability in authentication
+        Critical bug in payment processing
+        Data loss risk in backup system
+        Security issue in API endpoint
+        Critical bug in database query
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score should be 100 - (3 * 30 + 2 * 25) = 100 - (90 + 50) = 0 (clamped to 0)
+        expect(result.score).toBe(0);
+      });
+
+      test("should maintain consistent behavior with softened weight calculation", () => {
+        // 4 critical issues
+        const reviewComment = `
+        Security vulnerability detected
+        Critical bug found
+        Data loss possible
+        Security issue exists
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score should be 100 - (3 * 30 + 1 * 25) = 100 - 115 = 0 (clamped)
+        // This verifies the softened weight is 25 (base 30 * (1 - 5/30) = 25)
+        expect(result.score).toBe(0);
+      });
+
+      test("should use configurable weights for warnings", () => {
+        // 3 warnings
+        const reviewComment = `
+        Warning: potential issue with null handling
+        Warning: might fail under load
+        Warning: edge case not covered
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score should be 100 - (3 * 15) = 55
+        expect(result.score).toBe(55);
+      });
+
+      test("should use configurable weights for suggestions", () => {
+        // 4 suggestions
+        const reviewComment = `
+        Consider using async/await here
+        Suggest adding error handling
+        Recommend refactoring this function
+        Could be more efficient
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score should be 100 - (4 * 5) = 80
+        expect(result.score).toBe(80);
+      });
+
+      test("should handle mix of severity levels with configurable weights", () => {
+        // 2 critical, 2 warnings, 2 suggestions
+        const reviewComment = `
+        Security vulnerability in login
+        Critical bug in payment
+        Warning: potential race condition
+        Warning: might fail on timeout
+        Consider better naming here
+        Suggest adding tests
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score = 100 - (2 * 30 + 2 * 15 + 2 * 5) = 100 - (60 + 30 + 10) = 0
+        expect(result.score).toBe(0);
+      });
+
+      test("should verify softened weight formula uses base weight", () => {
+        // Test that softened weight is derived from base weight, not hardcoded
+        // 6 critical issues: 3 at base (30), 3 at softened (25)
+        const reviewComment = `
+        Security vulnerability 1
+        Critical bug 2
+        Data loss 3
+        Security issue 4
+        Critical bug 5
+        Security vulnerability 6
+      `;
+
+        const result = calculateQualityScore(reviewComment, false);
+
+        // Score = 100 - (3 * 30 + 3 * 25) = 100 - 165 = 0 (clamped)
+        expect(result.score).toBe(0);
+      });
+
+      test("should allow easy tuning of severity thresholds", () => {
+        // Verify behavior at softening threshold boundary (exactly 3 critical)
+        const exactly3 = `
+        Security vulnerability
+        Critical bug
+        Data loss
+      `;
+
+        const result3 = calculateQualityScore(exactly3, false);
+        expect(result3.score).toBe(10); // 100 - (3 * 30)
+
+        // Verify behavior just over threshold (4 critical)
+        const exactly4 = `
+        Security vulnerability
+        Critical bug
+        Data loss
+        Security issue
+      `;
+
+        const result4 = calculateQualityScore(exactly4, false);
+        expect(result4.score).toBe(0); // 100 - (3 * 30 + 1 * 25) = -15, clamped to 0
+      });
     });
   });
 

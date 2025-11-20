@@ -10,6 +10,21 @@
  * Extracted to module-level for maintainability and testability
  * Issue #18: Centralized all magic numbers for easier tuning
  */
+const SEVERITY_WEIGHTS = {
+  critical: {
+    base: 30, // Full penalty for first N critical issues
+    softened: 25, // Reduced penalty for additional critical issues (16.67% reduction)
+  },
+  warning: {
+    base: 15, // Warning penalty (currently no softening applied)
+    softened: 10, // Reserved for future adaptive thresholds
+  },
+  suggestion: {
+    base: 5, // Suggestion penalty (currently no softening applied)
+    softened: 3, // Reserved for future adaptive thresholds
+  },
+} as const;
+
 const SCORING_CONFIG = {
   // Severity weights
   CRITICAL_BASE_WEIGHT: 30,
@@ -21,6 +36,7 @@ const SCORING_CONFIG = {
   SUGGESTION_WEIGHT: 5,
 
   // LGTM scoring
+  SOFTENING_THRESHOLD: 3, // Number of issues before softening kicks in
   LGTM_BONUS: 10,
   LGTM_WITH_CRITICALS_PENALTY: 10,
 
@@ -292,23 +308,21 @@ export function calculateQualityScore(
   let score: number = SCORING_CONFIG.INITIAL_SCORE;
 
   // Calculate critical penalty with diminishing returns built in
-  // First 3 criticals: full penalty (30 points each)
-  // Additional criticals: softened penalty (25 points each - 16.67% reduction)
+  // First N criticals: full penalty (base weight)
+  // Additional criticals: softened penalty (softened weight)
   // This prevents unfairly harsh scoring when multiple related issues exist
   const criticalCount = critical.length;
-  const CRITICAL_SOFTENED_WEIGHT =
-    SCORING_CONFIG.CRITICAL_BASE_WEIGHT * (1 - SCORING_CONFIG.SOFTEN_FACTOR);
 
   const criticalPenalty =
-    Math.min(criticalCount, SCORING_CONFIG.CRITICAL_THRESHOLD) *
-      SCORING_CONFIG.CRITICAL_BASE_WEIGHT +
-    Math.max(0, criticalCount - SCORING_CONFIG.CRITICAL_THRESHOLD) *
-      CRITICAL_SOFTENED_WEIGHT;
+    Math.min(criticalCount, SCORING_CONFIG.SOFTENING_THRESHOLD) *
+      SEVERITY_WEIGHTS.critical.base +
+    Math.max(0, criticalCount - SCORING_CONFIG.SOFTENING_THRESHOLD) *
+      SEVERITY_WEIGHTS.critical.softened;
 
   // Deduct points based on issues found with severity weighting
   score -= criticalPenalty; // Critical issues with diminishing returns
-  score -= warnings.length * SCORING_CONFIG.WARNING_WEIGHT;
-  score -= suggestions.length * SCORING_CONFIG.SUGGESTION_WEIGHT;
+  score -= warnings.length * SEVERITY_WEIGHTS.warning.base;
+  score -= suggestions.length * SEVERITY_WEIGHTS.suggestion.base;
 
   // LGTM bonus - ONLY if reviewer is verified and authorized
   // SECURITY: Never trust LGTM from parsed comment content alone
