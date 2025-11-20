@@ -8,8 +8,10 @@
 /**
  * Scoring configuration constants
  * Extracted to module-level for maintainability and testability
+ * Issue #18: Centralized all magic numbers for easier tuning
  */
 const SCORING_CONFIG = {
+  // Severity weights
   CRITICAL_BASE_WEIGHT: 30,
   CRITICAL_THRESHOLD: 3,
   // Softening factor: 5/30 = 0.1667 (approximately 16.67% reduction)
@@ -17,8 +19,30 @@ const SCORING_CONFIG = {
   SOFTEN_FACTOR: 5 / 30,
   WARNING_WEIGHT: 15,
   SUGGESTION_WEIGHT: 5,
+
+  // LGTM scoring
   LGTM_BONUS: 10,
-  LGTM_WITH_CRITICALS_PENALTY: 10
+  LGTM_WITH_CRITICALS_PENALTY: 10,
+
+  // Score bounds
+  MIN_SCORE: 0,
+  MAX_SCORE: 100,
+  INITIAL_SCORE: 100,
+
+  // Category thresholds
+  CATEGORY_THRESHOLDS: {
+    EXCELLENT: 90,
+    GOOD: 70,
+    NEEDS_IMPROVEMENT: 50,
+  },
+
+  // Breakdown penalties (per issue)
+  BREAKDOWN_PENALTIES: {
+    SECURITY_CRITICAL: 40,
+    MAINTAINABILITY_WARNING: 10,
+    PERFORMANCE_WARNING: 20,
+    TESTABILITY_SUGGESTION: 10,
+  },
 } as const;
 
 export interface ReviewMetrics {
@@ -32,7 +56,7 @@ export interface ReviewMetrics {
 
 export interface CodeQualityScore {
   score: number; // 0-100
-  category: 'excellent' | 'good' | 'needs-improvement' | 'critical';
+  category: "excellent" | "good" | "needs-improvement" | "critical";
   breakdown: {
     security: number;
     maintainability: number;
@@ -110,20 +134,22 @@ export function analyzeReviewSeverity(reviewComment: string): {
   // Input validation - protect against DoS and ReDoS attacks
 
   // Check if input is a string
-  if (typeof reviewComment !== 'string') {
-    throw new Error('Invalid input: reviewComment must be a string');
+  if (typeof reviewComment !== "string") {
+    throw new Error("Invalid input: reviewComment must be a string");
   }
 
   // Check if input is empty or whitespace-only
   // Use regex \S to match all ECMAScript whitespace chars (including NBSP, form feed, etc.)
   if (!/\S/.test(reviewComment)) {
-    throw new Error('Invalid input: reviewComment cannot be empty');
+    throw new Error("Invalid input: reviewComment cannot be empty");
   }
 
   // Check maximum length (10000 characters) to prevent DoS
   const MAX_LENGTH = 10000;
   if (reviewComment.length > MAX_LENGTH) {
-    throw new Error(`Invalid input: reviewComment exceeds maximum length of ${MAX_LENGTH} characters`);
+    throw new Error(
+      `Invalid input: reviewComment exceeds maximum length of ${MAX_LENGTH} characters`
+    );
   }
 
   // Check maximum number of lines (1000 lines) to prevent DoS
@@ -132,20 +158,24 @@ export function analyzeReviewSeverity(reviewComment: string): {
   const MAX_LINES = 1000;
   let lineCount = 0;
   for (let i = 0; i < reviewComment.length; i++) {
-    if (reviewComment[i] === '\n') {
+    if (reviewComment[i] === "\n") {
       lineCount++;
       // Early exit if exceeded (DoS protection)
       if (lineCount > MAX_LINES) {
-        throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+        throw new Error(
+          `Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`
+        );
       }
     }
   }
   // If string doesn't end with newline, add 1 for the last line
   // If it ends with newline, lineCount already represents number of lines
-  if (reviewComment[reviewComment.length - 1] !== '\n') {
+  if (reviewComment[reviewComment.length - 1] !== "\n") {
     lineCount++;
     if (lineCount > MAX_LINES) {
-      throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+      throw new Error(
+        `Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`
+      );
     }
   }
 
@@ -154,39 +184,39 @@ export function analyzeReviewSeverity(reviewComment: string): {
   const suggestions: string[] = [];
 
   // Split by lines and analyze each
-  const lines = reviewComment.split('\n').filter(l => l.trim());
+  const lines = reviewComment.split("\n").filter((l) => l.trim());
 
   for (const line of lines) {
     const lowerLine = line.toLowerCase();
 
     // Critical issues - security, bugs, breaking changes
     if (
-      lowerLine.includes('security') ||
-      lowerLine.includes('vulnerability') ||
-      lowerLine.includes('sql injection') ||
-      lowerLine.includes('xss') ||
-      lowerLine.includes('critical bug') ||
-      lowerLine.includes('data loss')
+      lowerLine.includes("security") ||
+      lowerLine.includes("vulnerability") ||
+      lowerLine.includes("sql injection") ||
+      lowerLine.includes("xss") ||
+      lowerLine.includes("critical bug") ||
+      lowerLine.includes("data loss")
     ) {
       critical.push(line);
     }
     // Warnings - potential issues, code smells
     else if (
-      lowerLine.includes('warning') ||
-      lowerLine.includes('potential issue') ||
-      lowerLine.includes('might fail') ||
-      lowerLine.includes('edge case') ||
-      lowerLine.includes('race condition')
+      lowerLine.includes("warning") ||
+      lowerLine.includes("potential issue") ||
+      lowerLine.includes("might fail") ||
+      lowerLine.includes("edge case") ||
+      lowerLine.includes("race condition")
     ) {
       warnings.push(line);
     }
     // Suggestions - improvements, best practices
     else if (
-      lowerLine.includes('consider') ||
-      lowerLine.includes('suggest') ||
-      lowerLine.includes('recommend') ||
-      lowerLine.includes('could be') ||
-      lowerLine.includes('better to')
+      lowerLine.includes("consider") ||
+      lowerLine.includes("suggest") ||
+      lowerLine.includes("recommend") ||
+      lowerLine.includes("could be") ||
+      lowerLine.includes("better to")
     ) {
       suggestions.push(line);
     }
@@ -197,7 +227,7 @@ export function analyzeReviewSeverity(reviewComment: string): {
   return {
     critical: deduplicateIssues(critical),
     warnings: deduplicateIssues(warnings),
-    suggestions: deduplicateIssues(suggestions)
+    suggestions: deduplicateIssues(suggestions),
   };
 }
 
@@ -229,26 +259,26 @@ export function calculateQualityScore(
   _requiredApprovers: number = 1
 ): CodeQualityScore {
   // SECURITY: Validate lgtm parameter type before making security decisions
-  if (typeof lgtm !== 'boolean') {
+  if (typeof lgtm !== "boolean") {
     throw new TypeError(
-      'Invalid input: lgtm parameter must be a boolean. ' +
-      `Received ${typeof lgtm}: ${String(lgtm)}`
+      "Invalid input: lgtm parameter must be a boolean. " +
+        `Received ${typeof lgtm}: ${String(lgtm)}`
     );
   }
 
   // SECURITY: Enforce authorization when LGTM is claimed
   if (lgtm && !reviewerAuth) {
     throw new Error(
-      'SECURITY ERROR: LGTM requires verified reviewer authorization. ' +
-      'Call verifyReviewerAuthorization() first and pass the result as reviewerAuth parameter.'
+      "SECURITY ERROR: LGTM requires verified reviewer authorization. " +
+        "Call verifyReviewerAuthorization() first and pass the result as reviewerAuth parameter."
     );
   }
 
   // Additional check: even with reviewerAuth, verify it's actually verified
   if (lgtm && reviewerAuth && !reviewerAuth.isVerified) {
     throw new Error(
-      'SECURITY ERROR: LGTM requires isVerified=true in reviewerAuth. ' +
-      'The provided authorization is not verified.'
+      "SECURITY ERROR: LGTM requires isVerified=true in reviewerAuth. " +
+        "The provided authorization is not verified."
     );
   }
 
@@ -259,7 +289,7 @@ export function calculateQualityScore(
   // Also guard against severity itself being null/undefined (defense in depth)
   const { critical = [], warnings = [], suggestions = [] } = severity ?? {};
 
-  let score = 100;
+  let score: number = SCORING_CONFIG.INITIAL_SCORE;
 
   // Calculate critical penalty with diminishing returns built in
   // First 3 criticals: full penalty (30 points each)
@@ -271,8 +301,10 @@ export function calculateQualityScore(
   );
 
   const criticalPenalty =
-    Math.min(criticalCount, SCORING_CONFIG.CRITICAL_THRESHOLD) * SCORING_CONFIG.CRITICAL_BASE_WEIGHT +
-    Math.max(0, criticalCount - SCORING_CONFIG.CRITICAL_THRESHOLD) * CRITICAL_SOFTENED_WEIGHT;
+    Math.min(criticalCount, SCORING_CONFIG.CRITICAL_THRESHOLD) *
+      SCORING_CONFIG.CRITICAL_BASE_WEIGHT +
+    Math.max(0, criticalCount - SCORING_CONFIG.CRITICAL_THRESHOLD) *
+      CRITICAL_SOFTENED_WEIGHT;
 
   // Deduct points based on issues found with severity weighting
   score -= criticalPenalty; // Critical issues with diminishing returns
@@ -282,11 +314,14 @@ export function calculateQualityScore(
   // LGTM bonus - ONLY if reviewer is verified and authorized
   // SECURITY: Never trust LGTM from parsed comment content alone
   const isAuthorizedLgtm = reviewerAuth
-    ? (reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm)
+    ? reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm
     : false; // Default to false if no auth provided
 
   if (isAuthorizedLgtm && critical.length === 0) {
-    score = Math.min(100, score + SCORING_CONFIG.LGTM_BONUS);
+    score = Math.min(
+      SCORING_CONFIG.MAX_SCORE,
+      score + SCORING_CONFIG.LGTM_BONUS
+    );
   }
 
   // Penalty for LGTM with critical issues (authorized reviewer made a mistake)
@@ -295,31 +330,54 @@ export function calculateQualityScore(
   }
 
   // Ensure score is in valid range
-  score = Math.max(0, Math.min(100, score));
+  score = Math.max(
+    SCORING_CONFIG.MIN_SCORE,
+    Math.min(SCORING_CONFIG.MAX_SCORE, score)
+  );
 
-  // Categorize
-  let category: CodeQualityScore['category'];
-  if (score >= 90) category = 'excellent';
-  else if (score >= 70) category = 'good';
-  else if (score >= 50) category = 'needs-improvement';
-  else category = 'critical';
+  // Categorize using centralized thresholds
+  let category: CodeQualityScore["category"];
+  if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.EXCELLENT)
+    category = "excellent";
+  else if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.GOOD) category = "good";
+  else if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.NEEDS_IMPROVEMENT)
+    category = "needs-improvement";
+  else category = "critical";
 
   // Simple breakdown (could be enhanced with more sophisticated analysis)
   // Issue #11: Each dimension starts from 100 and deducts only relevant issues
+  // Issue #18: Use centralized breakdown penalties
   const breakdown = {
-    security: Math.max(0, 100 - critical.filter(c =>
-      c.toLowerCase().includes('security')).length * 40),
-    maintainability: Math.max(0, 100 - warnings.length * 10),
-    performance: Math.max(0, 100 - warnings.filter(w =>
-      w.toLowerCase().includes('performance')).length * 20),
-    testability: Math.max(0, 100 - suggestions.filter(s =>
-      s.toLowerCase().includes('test')).length * 10),
+    security: Math.max(
+      SCORING_CONFIG.MIN_SCORE,
+      SCORING_CONFIG.MAX_SCORE -
+        critical.filter((c) => c.toLowerCase().includes("security")).length *
+          SCORING_CONFIG.BREAKDOWN_PENALTIES.SECURITY_CRITICAL
+    ),
+    maintainability: Math.max(
+      SCORING_CONFIG.MIN_SCORE,
+      SCORING_CONFIG.MAX_SCORE -
+        warnings.length *
+          SCORING_CONFIG.BREAKDOWN_PENALTIES.MAINTAINABILITY_WARNING
+    ),
+    performance: Math.max(
+      SCORING_CONFIG.MIN_SCORE,
+      SCORING_CONFIG.MAX_SCORE -
+        warnings.filter((w) => w.toLowerCase().includes("performance")).length *
+          SCORING_CONFIG.BREAKDOWN_PENALTIES.PERFORMANCE_WARNING
+    ),
+    testability: Math.max(
+      SCORING_CONFIG.MIN_SCORE,
+      SCORING_CONFIG.MAX_SCORE -
+        suggestions.filter((s) => s.toLowerCase().includes("test")).length *
+          SCORING_CONFIG.BREAKDOWN_PENALTIES.TESTABILITY_SUGGESTION
+    ),
   };
 
   return {
     score,
     category,
-    breakdown
+    breakdown,
   };
 }
 
@@ -331,7 +389,7 @@ export function aggregateReviewMetrics(
 ): ReviewMetrics {
   // Input validation (Issue #9)
   if (!Array.isArray(reviews)) {
-    throw new TypeError('Invalid input: reviews must be an array');
+    throw new TypeError("Invalid input: reviews must be an array");
   }
 
   let criticalIssues = 0;
@@ -342,10 +400,10 @@ export function aggregateReviewMetrics(
 
   for (const review of reviews) {
     // Validate lgtm is a boolean
-    if (typeof review.lgtm !== 'boolean') {
+    if (typeof review.lgtm !== "boolean") {
       throw new TypeError(
         `Invalid input: lgtm must be a boolean. ` +
-        `Received ${typeof review.lgtm}: ${String(review.lgtm)}`
+          `Received ${typeof review.lgtm}: ${String(review.lgtm)}`
       );
     }
 
@@ -353,7 +411,7 @@ export function aggregateReviewMetrics(
     if (!Number.isFinite(review.reviewTime)) {
       throw new TypeError(
         `Invalid input: reviewTime must be a finite number. ` +
-        `Received ${typeof review.reviewTime}: ${String(review.reviewTime)}`
+          `Received ${typeof review.reviewTime}: ${String(review.reviewTime)}`
       );
     }
 
@@ -373,7 +431,7 @@ export function aggregateReviewMetrics(
     warnings,
     suggestions,
     lgtmRate: reviews.length > 0 ? lgtmCount / reviews.length : 0,
-    averageReviewTime: reviews.length > 0 ? totalTime / reviews.length : 0
+    averageReviewTime: reviews.length > 0 ? totalTime / reviews.length : 0,
   };
 }
 
@@ -382,7 +440,10 @@ export function aggregateReviewMetrics(
  * Caches authorization results to avoid redundant API calls
  * Implements bounded LRU-style cache with automatic eviction
  */
-const authCache = new Map<string, { result: ReviewerAuth; timestamp: number }>();
+const authCache = new Map<
+  string,
+  { result: ReviewerAuth; timestamp: number }
+>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
 
@@ -455,12 +516,12 @@ export async function verifyReviewerAuthorization(
     const response = await globalThis.fetch(
       `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/collaborators/${encodedLogin}/permission`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `token ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'ChatGPT-CodeReview-Bot'
-        }
+          Authorization: `token ${githubToken}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "ChatGPT-CodeReview-Bot",
+        },
       }
     );
 
@@ -471,7 +532,7 @@ export async function verifyReviewerAuthorization(
           isVerified: false, // User is not a collaborator
           login: githubLogin,
           hasWriteAccess: false,
-          verifiedAt: new Date()
+          verifiedAt: new Date(),
         };
 
         // Cache negative results too (avoid repeated 404s)
@@ -479,53 +540,63 @@ export async function verifyReviewerAuthorization(
         return result;
       }
 
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText}`
+      );
     }
 
-    const data = await response.json() as { permission?: string; user?: { login?: string } | null };
+    const data = (await response.json()) as {
+      permission?: string;
+      user?: { login?: string } | null;
+    };
 
     // Issue #28: Validate response structure before dereferencing
     // Fail secure if response is malformed
-    if (!data || !data.user || typeof data.user.login !== 'string' || typeof data.permission !== 'string') {
-      console.error('Malformed GitHub API response:', {
+    if (
+      !data ||
+      !data.user ||
+      typeof data.user.login !== "string" ||
+      typeof data.permission !== "string"
+    ) {
+      console.error("Malformed GitHub API response:", {
         hasData: !!data,
-        hasUser: !!(data?.user),
+        hasUser: !!data?.user,
         hasLogin: typeof data?.user?.login,
-        hasPermission: typeof data?.permission
+        hasPermission: typeof data?.permission,
       });
 
       return {
         isVerified: false,
         login: githubLogin,
         hasWriteAccess: false,
-        verifiedAt: new Date()
+        verifiedAt: new Date(),
       };
     }
 
     // Verify the login matches (security check)
-    const isVerified = data.user.login.toLowerCase() === githubLogin.toLowerCase();
+    const isVerified =
+      data.user.login.toLowerCase() === githubLogin.toLowerCase();
 
     // Check if user has write or admin access
     // Permissions: 'read', 'write', 'admin', 'none'
-    const hasWriteAccess = ['admin', 'write'].includes(data.permission);
+    const hasWriteAccess = ["admin", "write"].includes(data.permission);
 
     const result: ReviewerAuth = {
       isVerified,
       login: data.user.login,
       hasWriteAccess,
-      verifiedAt: new Date()
+      verifiedAt: new Date(),
     };
 
     // Cache successful result
     authCache.set(cacheKey, { result, timestamp: Date.now() });
     return result;
-
   } catch (error) {
     // Issue #29: Never log tokens - sanitize error logging
-    console.error('Failed to verify reviewer authorization:', {
+    console.error("Failed to verify reviewer authorization:", {
       reviewer: githubLogin,
       repo: `${repoOwner}/${repoName}`,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
       // Token explicitly omitted for security
     });
 
@@ -535,7 +606,7 @@ export async function verifyReviewerAuthorization(
       isVerified: false,
       login: githubLogin,
       hasWriteAccess: false,
-      verifiedAt: new Date()
+      verifiedAt: new Date(),
     };
   }
 }
