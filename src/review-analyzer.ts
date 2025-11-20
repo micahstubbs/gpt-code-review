@@ -146,16 +146,24 @@ export function calculateQualityScore(
 
   let score = 100;
 
+  // Calculate critical penalty with diminishing returns built in
+  // First 3 criticals: full penalty (30 points each)
+  // Additional criticals: softened penalty (83% of base = 25 points each)
+  // This prevents unfairly harsh scoring when multiple related issues exist
+  const CRITICAL_BASE_WEIGHT = 30;
+  const CRITICAL_THRESHOLD = 3;
+  const SOFTEN_FACTOR = 0.17; // 17% reduction
+  const CRITICAL_SOFTENED_WEIGHT = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR); // = 24.9 ≈ 25
+
+  const criticalCount = severity.critical.length;
+  const criticalPenalty =
+    Math.min(criticalCount, CRITICAL_THRESHOLD) * CRITICAL_BASE_WEIGHT +
+    Math.max(0, criticalCount - CRITICAL_THRESHOLD) * CRITICAL_SOFTENED_WEIGHT;
+
   // Deduct points based on issues found with severity weighting
-  score -= severity.critical.length * 30; // Critical issues: -30 points each
+  score -= criticalPenalty; // Critical issues with diminishing returns
   score -= severity.warnings.length * 15; // Warnings: -15 points each
   score -= severity.suggestions.length * 5; // Suggestions: -5 points each
-
-  // Apply diminishing returns for multiple issues of same type
-  // This prevents unfairly harsh scoring when multiple related issues exist
-  if (severity.critical.length > 3) {
-    score += Math.floor(severity.critical.length - 3) * 5; // Soften penalty
-  }
 
   // LGTM bonus - ONLY if reviewer is verified and authorized
   // SECURITY: Never trust LGTM from parsed comment content alone
