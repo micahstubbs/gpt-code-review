@@ -77,22 +77,44 @@ export function analyzeReviewSeverity(reviewComment: string): {
   warnings: string[];
   suggestions: string[];
 } {
-  // Input validation (Issue #15)
+  // Input validation - protect against DoS and ReDoS attacks
+
+  // Check if input is a string
   if (typeof reviewComment !== 'string') {
     throw new Error('Invalid input: reviewComment must be a string');
   }
 
-  if (reviewComment.trim() === '') {
+  // Check if input is empty
+  if (reviewComment.length === 0) {
     throw new Error('Invalid input: reviewComment cannot be empty');
   }
 
-  if (reviewComment.length > 10000) {
-    throw new Error('Invalid input: reviewComment exceeds maximum length of 10000 characters');
+  // Check maximum length (10000 characters) to prevent DoS
+  const MAX_LENGTH = 10000;
+  if (reviewComment.length > MAX_LENGTH) {
+    throw new Error(`Invalid input: reviewComment exceeds maximum length of ${MAX_LENGTH} characters`);
   }
 
-  const lineCount = reviewComment.split('\n').length;
-  if (lineCount > 1000) {
-    throw new Error('Invalid input: reviewComment exceeds maximum of 1000 lines');
+  // Check maximum number of lines (1000 lines) to prevent DoS
+  // Count newlines directly to avoid allocating intermediate array
+  const MAX_LINES = 1000;
+  let lineCount = 0;
+  for (let i = 0; i < reviewComment.length; i++) {
+    if (reviewComment[i] === '\n') {
+      lineCount++;
+      // Early return if we've exceeded the limit (optimization)
+      if (lineCount > MAX_LINES) {
+        throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+      }
+    }
+  }
+  // If string doesn't end with newline, we need to count the last line
+  // If it does end with newline, the newline count is already correct
+  if (reviewComment.length > 0 && reviewComment[reviewComment.length - 1] !== '\n') {
+    lineCount++;
+    if (lineCount > MAX_LINES) {
+      throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+    }
   }
 
   const critical: string[] = [];

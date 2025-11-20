@@ -485,6 +485,25 @@ describe('review-analyzer', () => {
           analyzeReviewSeverity(maxLines);
         }).not.toThrow();
       });
+
+      test('should accept input with exactly 1000 lines ending with newline', () => {
+        // Create a string with exactly 1000 lines, ending with \n
+        // This should count as 1000 lines, not 1001
+        const maxLines = Array(1000).fill('test').join('\n') + '\n';
+
+        expect(() => {
+          analyzeReviewSeverity(maxLines);
+        }).not.toThrow();
+      });
+
+      test('should reject input with 1001 lines', () => {
+        // Create a string with 1001 lines
+        const tooManyLines = Array(1001).fill('test').join('\n');
+
+        expect(() => {
+          analyzeReviewSeverity(tooManyLines);
+        }).toThrow('Invalid input: reviewComment exceeds maximum of 1000 lines');
+      });
     });
 
     describe('ReDoS protection', () => {
