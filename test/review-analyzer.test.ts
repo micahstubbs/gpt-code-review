@@ -3,17 +3,15 @@
  * Phase 1: Critical Security Fixes (#25, #26, #14)
  */
 
-// Mock node-fetch module BEFORE importing review-analyzer
-jest.mock('node-fetch');
-
 import {
   ReviewerAuth,
   calculateQualityScore,
   verifyReviewerAuthorization
 } from '../src/review-analyzer';
-import fetch from 'node-fetch';
 
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
+// Mock global fetch
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch as any;
 
 describe('review-analyzer', () => {
   beforeEach(() => {

@@ -10,7 +10,6 @@ module.exports = {
   testEnvironment: "node",
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
-    "^node-fetch$": "<rootDir>/test/__mocks__/node-fetch.ts",
   },
   extensionsToTreatAsEsm: [".ts"],
 };

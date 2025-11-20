@@ -3,7 +3,7 @@
  * This module provides sophisticated analysis of code reviews
  */
 
-import fetch from 'node-fetch';
+// Using native fetch (Node 18+) - types from @types/node
 
 export interface ReviewMetrics {
   totalReviews: number;
