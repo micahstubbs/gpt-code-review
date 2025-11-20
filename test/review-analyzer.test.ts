@@ -11,12 +11,19 @@ import {
 
 // Mock global fetch
 const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+const originalFetch = globalThis.fetch;
 global.fetch = mockFetch as any;
 globalThis.fetch = mockFetch as any;
 
 describe('review-analyzer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    // Restore original fetch to avoid polluting other test suites
+    globalThis.fetch = originalFetch;
+    global.fetch = originalFetch as any;
   });
 
   describe('Issue #26: ReviewerAuth interface (PAT exposure)', () => {
