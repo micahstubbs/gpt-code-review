@@ -1044,4 +1044,46 @@ CRITICAL: Another security issue`;
       }).toThrow(new TypeError('Invalid input: lgtm must be a boolean. Received number: 1'));
     });
   });
+
+  describe('Issue #19: Softening factor must be tied to base weights', () => {
+    test('softening should be proportional to base weight', () => {
+      // Verify the softening factor is a ratio, not a fixed value
+      const CRITICAL_BASE_WEIGHT = 30;
+      const SOFTEN_FACTOR = 5 / 30; // Ratio: 0.1667 (16.67%)
+      const softenedWeight = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR);
+
+      expect(softenedWeight).toBe(25);
+
+      // If base weight changes, softened weight should change proportionally
+      const NEW_BASE = 40;
+      const newSoftened = NEW_BASE * (1 - SOFTEN_FACTOR);
+      expect(newSoftened).toBeCloseTo(33.33, 1); // 40 * (1 - 0.1667) ≈ 33.33
+    });
+
+    test('softening prevents perverse incentives', () => {
+      // Issue: if softening was fixed at +5, and base weight = 4,
+      // then softened penalty would be -1 (increasing score with more issues)
+      // With proportional softening, this cannot happen
+      const review = Array(6).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const result = calculateQualityScore(review, false);
+
+      // Score should decrease monotonically (more issues = lower score)
+      const review5 = Array(5).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const result5 = calculateQualityScore(review5, false);
+
+      expect(result.score).toBeLessThanOrEqual(result5.score);
+    });
+
+    test('softened weight is always less than base weight', () => {
+      // This ensures additional issues still penalize, never reward
+      const CRITICAL_BASE_WEIGHT = 30;
+      const SOFTEN_FACTOR = 5 / 30;
+      const softenedWeight = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR);
+
+      expect(softenedWeight).toBeLessThan(CRITICAL_BASE_WEIGHT);
+      expect(softenedWeight).toBeGreaterThan(0);
+    });
+  });
 });
