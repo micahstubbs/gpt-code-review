@@ -241,6 +241,85 @@ export function analyzeReviewSeverity(reviewComment: string): {
 }
 
 /**
+ * Issue #20: Single-responsibility helper functions
+ */
+
+/**
+ * Computes penalty for a severity category with diminishing returns
+ */
+function computeCategoryPenalty(
+  count: number,
+  baseWeight: number,
+  softenedWeight: number,
+  threshold: number
+): number {
+  return (
+    Math.min(count, threshold) * baseWeight +
+    Math.max(0, count - threshold) * softenedWeight
+  );
+}
+
+/**
+ * Computes LGTM adjustment (bonus or penalty)
+ */
+function computeLgtmAdjustment(
+  lgtm: boolean,
+  hasCriticals: boolean,
+  isAuthorized: boolean
+): number {
+  if (!lgtm || !isAuthorized) return 0;
+  return hasCriticals
+    ? -SCORING_CONFIG.LGTM_WITH_CRITICALS_PENALTY
+    : SCORING_CONFIG.LGTM_BONUS;
+}
+
+/**
+ * Clamps score to valid range
+ */
+function clampScore(score: number, min: number = 0, max: number = 100): number {
+  return Math.max(min, Math.min(max, score));
+}
+
+/**
+ * Categorizes score into quality levels
+ */
+function categorizeScore(score: number): CodeQualityScore["category"] {
+  if (score >= 90) return "excellent";
+  if (score >= 70) return "good";
+  if (score >= 50) return "needs-improvement";
+  return "critical";
+}
+
+/**
+ * Computes dimension-specific breakdown scores
+ */
+function computeBreakdown(
+  critical: string[],
+  warnings: string[],
+  suggestions: string[]
+): CodeQualityScore["breakdown"] {
+  return {
+    security: Math.max(
+      0,
+      100 -
+        critical.filter((c) => c.toLowerCase().includes("security")).length * 40
+    ),
+    maintainability: Math.max(0, 100 - warnings.length * 10),
+    performance: Math.max(
+      0,
+      100 -
+        warnings.filter((w) => w.toLowerCase().includes("performance")).length *
+          20
+    ),
+    testability: Math.max(
+      0,
+      100 -
+        suggestions.filter((s) => s.toLowerCase().includes("test")).length * 10
+    ),
+  };
+}
+
+/**
  * Calculates code quality score based on review metrics
  * Uses weighted scoring algorithm with diminishing returns on critical issues
  *
@@ -300,85 +379,35 @@ export function calculateQualityScore(
 
   let score: number = SCORING_CONFIG.INITIAL_SCORE;
 
-  // Calculate critical penalty with diminishing returns built in
-  // First N criticals: full penalty (base weight)
-  // Additional criticals: softened penalty (softened weight)
-  // This prevents unfairly harsh scoring when multiple related issues exist
-  const criticalCount = critical.length;
-
-  const criticalPenalty =
-    Math.min(criticalCount, SCORING_CONFIG.SOFTENING_THRESHOLD) *
-      SEVERITY_WEIGHTS.critical.base +
-    Math.max(0, criticalCount - SCORING_CONFIG.SOFTENING_THRESHOLD) *
-      SEVERITY_WEIGHTS.critical.softened;
+  // Issue #20: Refactored to use single-responsibility helper functions
+  // Calculate penalties using helper with SEVERITY_WEIGHTS
+  const criticalPenalty = computeCategoryPenalty(
+    critical.length,
+    SEVERITY_WEIGHTS.critical.base,
+    SEVERITY_WEIGHTS.critical.softened,
+    SCORING_CONFIG.SOFTENING_THRESHOLD
+  );
 
   // Deduct points based on issues found with severity weighting
   score -= criticalPenalty; // Critical issues with diminishing returns
   score -= warnings.length * SEVERITY_WEIGHTS.warning.base;
   score -= suggestions.length * SEVERITY_WEIGHTS.suggestion.base;
 
-  // LGTM bonus - ONLY if reviewer is verified and authorized
-  // SECURITY: Never trust LGTM from parsed comment content alone
+  // LGTM adjustment using helper
   const isAuthorizedLgtm = reviewerAuth
-    ? reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm
-    : false; // Default to false if no auth provided
+    ? reviewerAuth.isVerified && reviewerAuth.hasWriteAccess
+    : false;
 
-  if (isAuthorizedLgtm && critical.length === 0) {
-    score = Math.min(
-      SCORING_CONFIG.MAX_SCORE,
-      score + SCORING_CONFIG.LGTM_BONUS
-    );
-  }
+  score += computeLgtmAdjustment(lgtm, critical.length > 0, isAuthorizedLgtm);
 
-  // Penalty for LGTM with critical issues (authorized reviewer made a mistake)
-  if (isAuthorizedLgtm && critical.length > 0) {
-    score -= SCORING_CONFIG.LGTM_WITH_CRITICALS_PENALTY;
-  }
-
-  // Ensure score is in valid range
-  score = Math.max(
-    SCORING_CONFIG.MIN_SCORE,
-    Math.min(SCORING_CONFIG.MAX_SCORE, score)
-  );
-
-  // Categorize using centralized thresholds
-  let category: CodeQualityScore["category"];
-  if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.EXCELLENT)
-    category = "excellent";
-  else if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.GOOD) category = "good";
-  else if (score >= SCORING_CONFIG.CATEGORY_THRESHOLDS.NEEDS_IMPROVEMENT)
-    category = "needs-improvement";
-  else category = "critical";
+  // Apply bounds and categorize using helpers
+  score = clampScore(score, 0, 100);
+  const category = categorizeScore(score);
 
   // Simple breakdown (could be enhanced with more sophisticated analysis)
   // Issue #11: Each dimension starts from 100 and deducts only relevant issues
   // Issue #18: Use centralized breakdown penalties
-  const breakdown = {
-    security: Math.max(
-      SCORING_CONFIG.MIN_SCORE,
-      SCORING_CONFIG.MAX_SCORE -
-        critical.filter((c) => c.toLowerCase().includes("security")).length *
-          SCORING_CONFIG.BREAKDOWN_PENALTIES.SECURITY_CRITICAL
-    ),
-    maintainability: Math.max(
-      SCORING_CONFIG.MIN_SCORE,
-      SCORING_CONFIG.MAX_SCORE -
-        warnings.length *
-          SCORING_CONFIG.BREAKDOWN_PENALTIES.MAINTAINABILITY_WARNING
-    ),
-    performance: Math.max(
-      SCORING_CONFIG.MIN_SCORE,
-      SCORING_CONFIG.MAX_SCORE -
-        warnings.filter((w) => w.toLowerCase().includes("performance")).length *
-          SCORING_CONFIG.BREAKDOWN_PENALTIES.PERFORMANCE_WARNING
-    ),
-    testability: Math.max(
-      SCORING_CONFIG.MIN_SCORE,
-      SCORING_CONFIG.MAX_SCORE -
-        suggestions.filter((s) => s.toLowerCase().includes("test")).length *
-          SCORING_CONFIG.BREAKDOWN_PENALTIES.TESTABILITY_SUGGESTION
-    ),
-  };
+  const breakdown = computeBreakdown(critical, warnings, suggestions);
 
   return {
     score,

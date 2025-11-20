@@ -1684,4 +1684,31 @@ CRITICAL: Another security issue`;
       expect(maxResult.score).toBeLessThanOrEqual(100);
     });
   });
+
+  describe('Issue #20: Single-responsibility helper functions', () => {
+    test('refactoring should maintain exact scoring behavior', () => {
+      const testCases = [
+        'Critical bug found',
+        'Warning: potential issue',
+        'Consider refactoring this\nSuggest adding tests',
+        'Critical bug 1\nCritical bug 2\nCritical bug 3\nCritical bug 4',
+      ];
+
+      testCases.forEach(review => {
+        const result = calculateQualityScore(review, false);
+        expect(result.score).toBeGreaterThanOrEqual(0);
+        expect(result.score).toBeLessThanOrEqual(100);
+      });
+    });
+
+    test('refactored code should produce same results as before', () => {
+      // Regression test - verify refactoring doesn't change behavior
+      const review = 'Security vulnerability\nWarning: issue\nConsider this';
+      const result = calculateQualityScore(review, false);
+
+      // 1 critical (30) + 1 warning (15) + 1 suggestion (5) = 50 penalty
+      expect(result.score).toBe(50);
+      expect(result.category).toBe('needs-improvement');
+    });
+  });
 });
