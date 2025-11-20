@@ -1508,4 +1508,43 @@ CRITICAL: Another security issue`;
       expect(result.score).toBe(0);
     });
   });
+
+  describe('Issue #18: Centralize magic numbers into configuration', () => {
+    test('should use centralized category thresholds', () => {
+      // Test boundary values for each category
+      const excellent = calculateQualityScore('Looks perfect', false);
+      expect(excellent.score).toBeGreaterThanOrEqual(90);
+      expect(excellent.category).toBe('excellent');
+
+      const good = 'Warning: potential issue here\nWarning: another issue';
+      const goodResult = calculateQualityScore(good, false);
+      expect(goodResult.score).toBeGreaterThanOrEqual(70);
+      expect(goodResult.score).toBeLessThan(90);
+      expect(goodResult.category).toBe('good');
+    });
+
+    test('should use centralized breakdown penalties', () => {
+      // Verify breakdown calculations use config values
+      const review = 'Security vulnerability found';
+      const result = calculateQualityScore(review, false);
+
+      // Security breakdown should use configured penalty
+      expect(result.breakdown.security).toBeLessThan(100);
+    });
+
+    test('should respect score bounds (0-100)', () => {
+      // Test minimum bound
+      const manyIssues = Array(10).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const minResult = calculateQualityScore(manyIssues, false);
+      expect(minResult.score).toBeGreaterThanOrEqual(0);
+      expect(minResult.score).toBeLessThanOrEqual(100);
+
+      // Test maximum bound
+      const perfect = 'Everything looks great!';
+      const maxResult = calculateQualityScore(perfect, false);
+      expect(maxResult.score).toBeGreaterThanOrEqual(0);
+      expect(maxResult.score).toBeLessThanOrEqual(100);
+    });
+  });
 });

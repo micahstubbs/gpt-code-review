@@ -296,8 +296,8 @@ export function calculateQualityScore(
   // Additional criticals: softened penalty (25 points each - 16.67% reduction)
   // This prevents unfairly harsh scoring when multiple related issues exist
   const criticalCount = critical.length;
-  const CRITICAL_SOFTENED_WEIGHT = 
-    SCORING_CONFIG.CRITICAL_BASE_WEIGHT * (1 - SCORING_CONFIG.SOFTEN_FACTOR)
+  const CRITICAL_SOFTENED_WEIGHT =
+    SCORING_CONFIG.CRITICAL_BASE_WEIGHT * (1 - SCORING_CONFIG.SOFTEN_FACTOR);
 
   const criticalPenalty =
     Math.min(criticalCount, SCORING_CONFIG.CRITICAL_THRESHOLD) *
