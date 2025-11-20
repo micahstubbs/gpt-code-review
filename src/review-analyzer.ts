@@ -146,7 +146,8 @@ export function calculateQualityScore(
 
   // Defensive defaults: Protect against undefined/null arrays from analyzeReviewSeverity
   // Issue #21: Add defensive defaults for undefined severity arrays
-  const { critical = [], warnings = [], suggestions = [] } = severity;
+  // Also guard against severity itself being null/undefined (defense in depth)
+  const { critical = [], warnings = [], suggestions = [] } = severity ?? {};
 
   let score = 100;
 
