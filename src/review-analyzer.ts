@@ -152,8 +152,9 @@ export function calculateQualityScore(
   // This prevents unfairly harsh scoring when multiple related issues exist
   const CRITICAL_BASE_WEIGHT = 30;
   const CRITICAL_THRESHOLD = 3;
-  // 17% reduction from base weight: 30 * (1 - 0.17) = 24.9, rounded to 25 for integer scores
-  const CRITICAL_SOFTENED_WEIGHT = 25;
+  const SOFTEN_FACTOR = 0.17; // 17% reduction from base weight
+  // Derive softened weight and round for integer scores
+  const CRITICAL_SOFTENED_WEIGHT = Math.round(CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR));
 
   const criticalCount = severity.critical.length;
   const criticalPenalty =
