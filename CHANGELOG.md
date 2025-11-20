@@ -19,13 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive test suite for review-analyzer module with 15 tests covering all security scenarios (#31)
 - Added Git workflow documentation to CLAUDE.md including branch naming convention `<issue-number>/description` (#30, #31)
 - Added planning documentation structure in `issues/<issue-number>/` directories (#30, #31)
+- Added `node-fetch@2.7.0` dependency for HTTP requests (compatible with CI environments) (#31)
+- Added `@types/node-fetch` dev dependency for TypeScript support (#31)
+- Added Jest mock configuration for node-fetch module testing (#31)
 
 ### Changed
 
 - **BREAKING:** `ReviewerAuth` interface now requires `verifiedAt: Date` field instead of optional `authToken?: string` (#26, #31)
 - **BREAKING:** `calculateQualityScore()` now throws error if `lgtm=true` without valid `reviewerAuth` parameter (#14, #31)
 - Replaced deprecation warnings with security enforcement errors for LGTM usage (#14, #31)
-- Removed node-fetch import, now using native fetch (Node 18+ required) (#27, #31)
 
 ### Fixed
 
