@@ -1487,4 +1487,25 @@ CRITICAL: Another security issue`;
       expect(maxResult.score).toBeLessThanOrEqual(100);
     });
   });
+
+  describe('Issue #24: Remove redundant Math operations on integers', () => {
+    test('softened weight calculation should produce integer result', () => {
+      // Verify that 30 * (1 - 5/30) = 25 exactly (no rounding needed)
+      const CRITICAL_BASE_WEIGHT = 30;
+      const SOFTEN_FACTOR = 5 / 30;
+      const result = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR);
+      expect(result).toBe(25);
+      expect(Number.isInteger(result)).toBe(true);
+    });
+
+    test('penalty calculations work correctly without redundant operations', () => {
+      // 4 critical issues: 3 at base weight (30), 1 at softened weight (25)
+      const review = Array(4).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const result = calculateQualityScore(review, false);
+
+      // Score = 100 - (3 * 30 + 1 * 25) = 100 - 115 = 0 (clamped)
+      expect(result.score).toBe(0);
+    });
+  });
 });
