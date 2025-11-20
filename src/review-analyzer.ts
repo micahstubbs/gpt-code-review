@@ -144,17 +144,22 @@ export function calculateQualityScore(
 
   const severity = analyzeReviewSeverity(reviewComment);
 
+  // Defensive defaults: Protect against undefined/null arrays from analyzeReviewSeverity
+  // Issue #21: Add defensive defaults for undefined severity arrays
+  // Also guard against severity itself being null/undefined (defense in depth)
+  const { critical = [], warnings = [], suggestions = [] } = severity ?? {};
+
   let score = 100;
 
   // Deduct points based on issues found with severity weighting
-  score -= severity.critical.length * 30; // Critical issues: -30 points each
-  score -= severity.warnings.length * 15; // Warnings: -15 points each
-  score -= severity.suggestions.length * 5; // Suggestions: -5 points each
+  score -= critical.length * 30; // Critical issues: -30 points each
+  score -= warnings.length * 15; // Warnings: -15 points each
+  score -= suggestions.length * 5; // Suggestions: -5 points each
 
   // Apply diminishing returns for multiple issues of same type
   // This prevents unfairly harsh scoring when multiple related issues exist
-  if (severity.critical.length > 3) {
-    score += Math.floor(severity.critical.length - 3) * 5; // Soften penalty
+  if (critical.length > 3) {
+    score += Math.floor(critical.length - 3) * 5; // Soften penalty
   }
 
   // LGTM bonus - ONLY if reviewer is verified and authorized
@@ -163,12 +168,12 @@ export function calculateQualityScore(
     ? (reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm)
     : false; // Default to false if no auth provided
 
-  if (isAuthorizedLgtm && severity.critical.length === 0) {
+  if (isAuthorizedLgtm && critical.length === 0) {
     score = Math.min(100, score + 10);
   }
 
   // Penalty for LGTM with critical issues (authorized reviewer made a mistake)
-  if (isAuthorizedLgtm && severity.critical.length > 0) {
+  if (isAuthorizedLgtm && critical.length > 0) {
     score -= 10;
   }
 
@@ -183,13 +188,14 @@ export function calculateQualityScore(
   else category = 'critical';
 
   // Simple breakdown (could be enhanced with more sophisticated analysis)
+  // Issue #11: Each dimension starts from 100 and deducts only relevant issues
   const breakdown = {
-    security: Math.max(0, score - severity.critical.filter(c =>
+    security: Math.max(0, 100 - critical.filter(c =>
       c.toLowerCase().includes('security')).length * 40),
-    maintainability: Math.max(0, score - severity.warnings.length * 10),
-    performance: Math.max(0, score - severity.warnings.filter(w =>
+    maintainability: Math.max(0, 100 - warnings.length * 10),
+    performance: Math.max(0, 100 - warnings.filter(w =>
       w.toLowerCase().includes('performance')).length * 20),
-    testability: Math.max(0, score - severity.suggestions.filter(s =>
+    testability: Math.max(0, 100 - suggestions.filter(s =>
       s.toLowerCase().includes('test')).length * 10),
   };
 
