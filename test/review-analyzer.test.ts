@@ -1488,7 +1488,6 @@ CRITICAL: Another security issue`;
     });
   });
 
-<<<<<<< HEAD
   describe("Issue #24: Remove redundant Math operations on integers", () => {
     test("softened weight calculation should produce integer result", () => {
       // Verify that 30 * (1 - 5/30) = 25 exactly (no rounding needed)
