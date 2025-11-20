@@ -61,6 +61,31 @@ export function analyzeReviewSeverity(reviewComment: string): {
   warnings: string[];
   suggestions: string[];
 } {
+  // Input validation - protect against DoS and ReDoS attacks
+
+  // Check if input is a string
+  if (typeof reviewComment !== 'string') {
+    throw new Error('Invalid input: reviewComment must be a string');
+  }
+
+  // Check if input is empty
+  if (reviewComment.length === 0) {
+    throw new Error('Invalid input: reviewComment cannot be empty');
+  }
+
+  // Check maximum length (10000 characters) to prevent DoS
+  const MAX_LENGTH = 10000;
+  if (reviewComment.length > MAX_LENGTH) {
+    throw new Error(`Invalid input: reviewComment exceeds maximum length of ${MAX_LENGTH} characters`);
+  }
+
+  // Check maximum number of lines (1000 lines) to prevent DoS
+  const MAX_LINES = 1000;
+  const lineCount = reviewComment.split('\n').length;
+  if (lineCount > MAX_LINES) {
+    throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+  }
+
   const critical: string[] = [];
   const warnings: string[] = [];
   const suggestions: string[] = [];
