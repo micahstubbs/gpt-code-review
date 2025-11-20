@@ -81,9 +81,12 @@ export class Chat {
         ? `Answer me in ${process.env.LANGUAGE}.`
         : '';
 
-    const userPrompt = process.env.PROMPT || 'Please review the following code patch. Focus on potential bugs, risks, and improvement suggestions.';
+    const basePrompt = process.env.PROMPT || 'Review the following code patch. Focus on potential bugs, risks, and improvements.';
 
-    const prompt = `${userPrompt} ${answerLanguage}\n\nCode patch:\n${patch}`;
+    // Add conciseness instruction
+    const styleInstruction = ' Be concise. Prioritize clarity over perfect grammar.';
+
+    const prompt = `${basePrompt}${styleInstruction} ${answerLanguage}\n\nCode patch:\n${patch}`;
 
     try {
       const res = await this.openai.responses.create({
@@ -93,7 +96,7 @@ export class Chat {
           effort: (process.env.REASONING_EFFORT as any) || 'medium'
         },
         text: {
-          verbosity: (process.env.VERBOSITY as any) || 'medium',
+          verbosity: (process.env.VERBOSITY as any) || 'low', // Set to low for conciseness
           format: {
             type: 'json_schema',
             name: 'code_review_response',
@@ -102,14 +105,38 @@ export class Chat {
               properties: {
                 lgtm: {
                   type: "boolean",
-                  description: "True if the code looks good to merge, false if there are concerns"
+                  description: "True if code is good to merge, false if concerns exist"
                 },
                 review_comment: {
                   type: "string",
-                  description: "Detailed review comments in markdown format"
+                  description: "Legacy field for backward compatibility (can be empty)"
+                },
+                issues: {
+                  type: "array",
+                  description: "List of issues found in the code",
+                  items: {
+                    type: "object",
+                    properties: {
+                      severity: {
+                        type: "string",
+                        enum: ["critical", "warning", "style", "suggestion"],
+                        description: "Severity level of the issue"
+                      },
+                      message: {
+                        type: "string",
+                        description: "Brief description of the issue"
+                      }
+                    },
+                    required: ["severity", "message"],
+                    additionalProperties: false
+                  }
+                },
+                details: {
+                  type: "string",
+                  description: "Detailed analysis and explanations"
                 }
               },
-              required: ["lgtm", "review_comment"],
+              required: ["lgtm", "review_comment", "issues", "details"],
               additionalProperties: false
             },
             strict: true
