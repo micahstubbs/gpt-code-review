@@ -86,14 +86,21 @@ export declare function aggregateReviewMetrics(reviews: Array<{
     reviewTime: number;
 }>): ReviewMetrics;
 /**
+ * Clears the authorization cache
+ * Exported for testing purposes
+ */
+export declare function clearAuthCache(): void;
+/**
  * Verifies reviewer authorization from GitHub API
  * SECURITY: This function MUST query GitHub's API server-side to verify permissions.
  * Never trust client-provided authorization data.
  *
+ * Issue #29: Implements memoization to reduce API calls and avoid rate limits
+ *
  * @param githubLogin - Reviewer's GitHub login
  * @param repoOwner - Repository owner
  * @param repoName - Repository name
- * @param githubToken - GitHub API token with repo permissions
+ * @param githubToken - GitHub API token with repo permissions (never logged)
  * @returns Verified reviewer authorization
  *
  * @example

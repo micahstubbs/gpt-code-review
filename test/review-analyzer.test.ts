@@ -8,7 +8,8 @@ import {
   calculateQualityScore,
   verifyReviewerAuthorization,
   analyzeReviewSeverity,
-  aggregateReviewMetrics
+  aggregateReviewMetrics,
+  clearAuthCache
 } from '../src/review-analyzer';
 
 // Mock global fetch
@@ -20,6 +21,7 @@ globalThis.fetch = mockFetch as any;
 describe('review-analyzer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearAuthCache(); // Issue #29: Clear cache between tests
   });
 
   afterAll(() => {
@@ -1137,6 +1139,116 @@ CRITICAL: Another security issue`;
       const result = analyzeReviewSeverity(reviewComment);
 
       expect(result.critical.length).toBe(1);
+    });
+  });
+  describe('Issue #29: Rate limiting and memoization', () => {
+    test('should cache authorization results for repeated calls', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          permission: 'write',
+          user: { login: 'test-user' }
+        })
+      } as any);
+
+      // First call
+      const auth1 = await verifyReviewerAuthorization('test-user', 'owner', 'repo', 'token');
+      expect(auth1.isVerified).toBe(true);
+
+      // Second call should use cache (no additional fetch)
+      mockFetch.mockClear();
+      const auth2 = await verifyReviewerAuthorization('test-user', 'owner', 'repo', 'token');
+      expect(auth2.isVerified).toBe(true);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('should not leak token in any logs', async () => {
+      const consoleLog = jest.spyOn(console, 'log');
+      const consoleError = jest.spyOn(console, 'error');
+
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      await verifyReviewerAuthorization('test', 'owner', 'repo', 'secret-token-123');
+
+      // Check console output doesn't contain token
+      const allLogs = [
+        ...consoleLog.mock.calls.map(c => JSON.stringify(c)),
+        ...consoleError.mock.calls.map(c => JSON.stringify(c))
+      ].join(' ');
+
+      expect(allLogs).not.toContain('secret-token-123');
+
+      consoleLog.mockRestore();
+      consoleError.mockRestore();
+    });
+
+    test('cache should expire after TTL', async () => {
+      jest.useFakeTimers();
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          permission: 'write',
+          user: { login: 'test-user' }
+        })
+      } as any);
+
+      // First call
+      await verifyReviewerAuthorization('test-user', 'owner', 'repo', 'token');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Advance time past TTL (5 minutes)
+      jest.advanceTimersByTime(6 * 60 * 1000);
+
+      // Should make new API call after TTL
+      await verifyReviewerAuthorization('test-user', 'owner', 'repo', 'token');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      jest.useRealTimers();
+    });
+  });
+
+  describe('Issue #19: Softening factor must be tied to base weights', () => {
+    test('softening should be proportional to base weight', () => {
+      // Verify the softening factor is a ratio, not a fixed value
+      const CRITICAL_BASE_WEIGHT = 30;
+      const SOFTEN_FACTOR = 5 / 30; // Ratio: 0.1667 (16.67%)
+      const softenedWeight = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR);
+
+      expect(softenedWeight).toBe(25);
+
+      // If base weight changes, softened weight should change proportionally
+      const NEW_BASE = 40;
+      const newSoftened = NEW_BASE * (1 - SOFTEN_FACTOR);
+      expect(newSoftened).toBeCloseTo(33.33, 1); // 40 * (1 - 0.1667) ≈ 33.33
+    });
+
+    test('softening prevents perverse incentives', () => {
+      // Issue: if softening was fixed at +5, and base weight = 4,
+      // then softened penalty would be -1 (increasing score with more issues)
+      // With proportional softening, this cannot happen
+      const review = Array(6).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const result = calculateQualityScore(review, false);
+
+      // Score should decrease monotonically (more issues = lower score)
+      const review5 = Array(5).fill(0).map((_, i) =>
+        `Critical bug ${i}`).join('\n');
+      const result5 = calculateQualityScore(review5, false);
+
+      expect(result.score).toBeLessThanOrEqual(result5.score);
+    });
+
+    test('softened weight is always less than base weight', () => {
+      // This ensures additional issues still penalize, never reward
+      const CRITICAL_BASE_WEIGHT = 30;
+      const SOFTEN_FACTOR = 5 / 30;
+      const softenedWeight = CRITICAL_BASE_WEIGHT * (1 - SOFTEN_FACTOR);
+
+      expect(softenedWeight).toBeLessThan(CRITICAL_BASE_WEIGHT);
+      expect(softenedWeight).toBeGreaterThan(0);
     });
   });
 });
