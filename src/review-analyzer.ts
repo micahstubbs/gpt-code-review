@@ -73,26 +73,26 @@ export interface ReviewerAuth {
  * Issue #17: Prevent score gaming via issue fragmentation
  *
  * Normalizes strings (lowercase + trim) before comparison to detect duplicates
- * This prevents gaming the system by repeating the same issue multiple times
+ * When duplicates found, keeps the longest version (most detailed)
  *
  * @param issues - Array of issue strings to deduplicate
  * @returns Deduplicated array with only unique issues
  */
 function deduplicateIssues(issues: string[]): string[] {
-  const seen = new Set<string>();
-  const unique: string[] = [];
+  const seen = new Map<string, string>();
 
   for (const issue of issues) {
     // Normalize: trim whitespace and convert to lowercase for comparison
     const normalized = issue.trim().toLowerCase();
 
-    if (!seen.has(normalized)) {
-      seen.add(normalized);
-      unique.push(issue); // Keep original formatting in output
+    const existing = seen.get(normalized);
+    if (!existing || issue.length > existing.length) {
+      // Keep this version if it's new or longer (more detailed)
+      seen.set(normalized, issue);
     }
   }
 
-  return unique;
+  return Array.from(seen.values());
 }
 
 /**
