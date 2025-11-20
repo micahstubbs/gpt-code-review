@@ -1250,5 +1250,84 @@ CRITICAL: Another security issue`;
       expect(softenedWeight).toBeLessThan(CRITICAL_BASE_WEIGHT);
       expect(softenedWeight).toBeGreaterThan(0);
     });
+  describe('Issue #28: Improve error handling and diagnostics', () => {
+    test('should handle malformed API response (missing user field)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          permission: 'write'
+          // Missing 'user' field
+        })
+      } as any);
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+
+      // Should fail secure when response is malformed
+      expect(auth.isVerified).toBe(false);
+    });
+
+    test('should handle null user object', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          permission: 'write',
+          user: null
+        })
+      } as any);
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+      expect(auth.isVerified).toBe(false);
+    });
+
+    test('should handle missing permission field', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          user: { login: 'test' }
+          // Missing 'permission' field
+        })
+      } as any);
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+      expect(auth.isVerified).toBe(false);
+    });
+
+    test('should handle invalid JSON response', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => { throw new Error('Invalid JSON'); }
+      } as any);
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+      expect(auth.isVerified).toBe(false);
+    });
+
+    test('should handle network errors gracefully', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+      expect(auth.isVerified).toBe(false);
+    });
+
+    test('should handle unexpected permission values', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          permission: 'unknown-permission',
+          user: { login: 'test' }
+        })
+      } as any);
+
+      const auth = await verifyReviewerAuthorization('test', 'owner', 'repo', 'token');
+      // Should mark as verified but no write access
+      expect(auth.hasWriteAccess).toBe(false);
+    });
+  });
+
   });
 });
