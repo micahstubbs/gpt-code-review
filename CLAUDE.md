@@ -215,6 +215,37 @@ When working on significant features or fixes:
 5. Create PR when complete
 6. Open the PR in the user's default browser
 
+## Parallel Development Workflow
+
+### Git Worktrees
+
+This project has pre-configured git worktrees available for parallel development workflows, particularly useful when using the `superpowers:dispatching-parallel-agents` skill:
+
+- `~/workspace/worktrees/ChatGPT-CodeReview-worktree-0`
+- `~/workspace/worktrees/ChatGPT-CodeReview-worktree-1`
+- `~/workspace/worktrees/ChatGPT-CodeReview-worktree-2`
+- `~/workspace/worktrees/ChatGPT-CodeReview-worktree-3`
+- `~/workspace/worktrees/ChatGPT-CodeReview-worktree-4`
+
+**Usage:**
+- Each worktree is a separate working directory sharing the same git repository
+- Use worktrees to work on multiple branches simultaneously without switching contexts
+- Ideal for parallel agent workflows where multiple independent tasks need isolated workspaces
+- Each worktree can be on a different branch, allowing concurrent development without conflicts
+
+**Example:**
+```bash
+# Worktree-0 working on feature A
+cd ~/workspace/worktrees/ChatGPT-CodeReview-worktree-0
+git checkout 30/phase1-critical-security-fixes
+
+# Worktree-1 working on feature B
+cd ~/workspace/worktrees/ChatGPT-CodeReview-worktree-1
+git checkout 25/fix-404-authorization-bug
+
+# Both can be modified simultaneously without interference
+```
+
 ## Important Notes
 
 - **Use yarn, not npm** - Project uses Yarn Classic (v1)
