@@ -169,7 +169,15 @@ export function analyzeReviewSeverity(reviewComment: string): {
 
 /**
  * Calculates code quality score based on review metrics
- * Uses weighted scoring algorithm with adaptive thresholds
+ * Uses weighted scoring algorithm with diminishing returns on critical issues
+ *
+ * Scoring behavior:
+ * - Base weights: critical (30), warning (15), suggestion (5)
+ * - Diminishing returns: First 3 critical issues at full penalty (30 each),
+ *   additional critical issues softened to 25 each (16.67% reduction)
+ * - LGTM bonus (+10) only for authorized reviewers with zero critical issues
+ * - LGTM penalty (-10) for authorized reviewers who approve despite critical issues
+ * - Category thresholds: excellent (90+), good (70+), needs-improvement (50+), critical (<50)
  *
  * SECURITY: LGTM scoring requires verified reviewer authorization.
  * Do NOT trust LGTM from parsed comment content - require server-side
