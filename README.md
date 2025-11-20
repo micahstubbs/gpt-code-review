@@ -91,6 +91,11 @@ jobs:
           MAX_PATCH_LENGTH: 10000 # if the patch/diff length is large than MAX_PATCH_LENGTH, will be ignored and won't review. By default, with no MAX_PATCH_LENGTH set, there is also no limit for the patch/diff length.
           IGNORE_PATTERNS: /node_modules/**/*,*.md # glob pattern or regex pattern to ignore files, separated by comma
           INCLUDE_PATTERNS: *.js,*.ts # glob pattern or regex pattern to include files, separated by comma
+
+          # Comment formatting
+          COMMENT_FORMAT: structured # structured (default) or legacy - controls review comment format
+          # - structured: Shows concise issue summaries at top with detailed analysis in collapsible sections
+          # - legacy: Uses plain markdown format (backward compatible)
 ```
 
 ## Self-hosting

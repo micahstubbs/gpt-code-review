@@ -127,6 +127,16 @@ Requires `.env` file with configuration (see `.env.example`)
 - `USE_GITHUB_MODELS=true`
 - `GITHUB_TOKEN`
 
+### Comment Formatting
+- `COMMENT_FORMAT` - Control the format of code review comments
+  - `structured` (default): Shows concise issue summaries at the top with detailed analysis in collapsible `<details>` sections
+  - `legacy`: Uses plain markdown format (backward compatible)
+
+The structured format includes:
+- Concise issue list at the top organized by severity (Critical, Warning, Style, Suggestion)
+- Detailed explanations collapsed by default for easier PR scanning
+- Improved readability for reviews with multiple issues
+
 ## Deployment Targets
 
 ### 1. GitHub App (Self-hosted)
@@ -172,8 +182,18 @@ Pattern matching supports:
 5. Filter files by patterns
 6. For each file:
    - Call `Chat.codeReview(patch)` with git diff
-   - Collect review comments
+   - Receive structured response with `{ lgtm, review_comment, issues[], details }`
+   - Format comment using `formatReviewComment()` (if COMMENT_FORMAT=structured)
+   - Collect formatted review comments
 7. Post review via GitHub API with all comments
+
+## Review Comment Format
+
+By default (COMMENT_FORMAT=structured), comments include:
+- **Issue Summary**: Concise list of all issues by severity
+- **Detailed Analysis**: Full explanations in collapsible `<details>` section
+
+Set COMMENT_FORMAT=legacy for backward-compatible plain markdown format.
 
 ## Testing
 
