@@ -27,7 +27,6 @@
     "loglevel": "^1.9.2",
     "minimatch": "^10.0.1",
     "next": "^13.1.6",
-    "node-fetch": "^3.3.0",
     "openai": "^6.9.1",
     "probot": "^12.2.4"
   },

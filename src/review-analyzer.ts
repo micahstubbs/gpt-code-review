@@ -3,7 +3,7 @@
  * This module provides sophisticated analysis of code reviews
  */
 
-import fetch from 'node-fetch';
+// Using native fetch (Node 18+) - types from @types/node
 
 export interface ReviewMetrics {
   totalReviews: number;
@@ -46,10 +46,10 @@ export interface ReviewerAuth {
   hasWriteAccess: boolean;
 
   /**
-   * Cryptographic signature or token proving authorization
-   * Should be verified server-side against GitHub's API
+   * Timestamp when authorization was verified
+   * Used for auditing and cache invalidation
    */
-  authToken?: string;
+  verifiedAt: Date;
 }
 
 /**
@@ -124,8 +124,24 @@ export function calculateQualityScore(
   reviewComment: string,
   lgtm: boolean,
   reviewerAuth?: ReviewerAuth,
-  requiredApprovers: number = 1
+  _requiredApprovers: number = 1
 ): CodeQualityScore {
+  // SECURITY: Enforce authorization when LGTM is claimed
+  if (lgtm && !reviewerAuth) {
+    throw new Error(
+      'SECURITY ERROR: LGTM requires verified reviewer authorization. ' +
+      'Call verifyReviewerAuthorization() first and pass the result as reviewerAuth parameter.'
+    );
+  }
+
+  // Additional check: even with reviewerAuth, verify it's actually verified
+  if (lgtm && reviewerAuth && !reviewerAuth.isVerified) {
+    throw new Error(
+      'SECURITY ERROR: LGTM requires isVerified=true in reviewerAuth. ' +
+      'The provided authorization is not verified.'
+    );
+  }
+
   const severity = analyzeReviewSeverity(reviewComment);
 
   let score = 100;
@@ -151,34 +167,9 @@ export function calculateQualityScore(
     score = Math.min(100, score + 10);
   }
 
-  // Penalty for LGTM with critical issues (inconsistency or security bypass attempt)
-  if (lgtm && severity.critical.length > 0) {
-    if (isAuthorizedLgtm) {
-      // Authorized reviewer made a mistake - moderate penalty
-      score -= 10;
-    } else {
-      // Unauthorized LGTM with critical issues - severe penalty (potential security bypass)
-      score -= 25;
-    }
-  }
-
-  // Warn if using deprecated lgtm without authorization
-  if (lgtm && !reviewerAuth) {
-    console.warn(
-      'SECURITY WARNING: LGTM scoring without reviewer authorization. ' +
-      'This is insecure and should not be used in production. ' +
-      'Pass reviewerAuth parameter with server-side verified permissions.'
-    );
-  }
-
-  // Multi-approver support (for future use with review aggregation)
-  // Note: Single review scoring doesn't enforce requiredApprovers
-  // Use aggregateReviewMetrics() with authorization array for multi-approver enforcement
-  if (requiredApprovers > 1 && !reviewerAuth) {
-    console.warn(
-      `Multi-approver requirement (${requiredApprovers}) specified but no authorization provided. ` +
-      'Use verifyReviewerAuthorization() and aggregate multiple reviews to enforce this.'
-    );
+  // Penalty for LGTM with critical issues (authorized reviewer made a mistake)
+  if (isAuthorizedLgtm && severity.critical.length > 0) {
+    score -= 10;
   }
 
   // Ensure score is in valid range
@@ -278,7 +269,7 @@ export async function verifyReviewerAuthorization(
   try {
     // Query GitHub API to verify reviewer permissions
     // GET /repos/{owner}/{repo}/collaborators/{username}/permission
-    const response = await fetch(
+    const response = await globalThis.fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/collaborators/${githubLogin}/permission`,
       {
         method: 'GET',
@@ -294,10 +285,10 @@ export async function verifyReviewerAuthorization(
       // If user is not a collaborator, GitHub returns 404
       if (response.status === 404) {
         return {
-          isVerified: true, // API call succeeded
+          isVerified: false, // User is not a collaborator
           login: githubLogin,
-          hasWriteAccess: false, // Not a collaborator
-          authToken: githubToken
+          hasWriteAccess: false,
+          verifiedAt: new Date()
         };
       }
 
@@ -317,7 +308,7 @@ export async function verifyReviewerAuthorization(
       isVerified,
       login: data.user.login,
       hasWriteAccess,
-      authToken: githubToken
+      verifiedAt: new Date()
     };
 
   } catch (error) {
@@ -328,7 +319,7 @@ export async function verifyReviewerAuthorization(
       isVerified: false,
       login: githubLogin,
       hasWriteAccess: false,
-      authToken: undefined
+      verifiedAt: new Date()
     };
   }
 }

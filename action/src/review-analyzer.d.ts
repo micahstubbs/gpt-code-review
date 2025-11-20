@@ -38,10 +38,10 @@ export interface ReviewerAuth {
      */
     hasWriteAccess: boolean;
     /**
-     * Cryptographic signature or token proving authorization
-     * Should be verified server-side against GitHub's API
+     * Timestamp when authorization was verified
+     * Used for auditing and cache invalidation
      */
-    authToken?: string;
+    verifiedAt: Date;
 }
 /**
  * Analyzes review content to extract severity levels
@@ -65,7 +65,7 @@ export declare function analyzeReviewSeverity(reviewComment: string): {
  * @param reviewerAuth - Server-side verified reviewer authorization (optional)
  * @param requiredApprovers - Minimum number of authorized approvers (default: 1)
  */
-export declare function calculateQualityScore(reviewComment: string, lgtm: boolean, reviewerAuth?: ReviewerAuth, requiredApprovers?: number): CodeQualityScore;
+export declare function calculateQualityScore(reviewComment: string, lgtm: boolean, reviewerAuth?: ReviewerAuth, _requiredApprovers?: number): CodeQualityScore;
 /**
  * Generates metrics from a collection of reviews
  */
