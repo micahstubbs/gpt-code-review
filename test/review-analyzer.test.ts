@@ -283,8 +283,13 @@ describe('review-analyzer', () => {
 
   describe('Issue #12 & #19: Fix diminishing returns and weight-proportional softening', () => {
     // Helper to generate critical issues
+    // Issue #17: Generate unique issues to work with deduplication
     const generateCriticalIssues = (count: number): string => {
-      return Array(count).fill('Critical bug found').join('\n');
+      const issues: string[] = [];
+      for (let i = 0; i < count; i++) {
+        issues.push(`Critical bug found in component ${i + 1}`);
+      }
+      return issues.join('\n');
     };
 
 
@@ -1042,6 +1047,96 @@ CRITICAL: Another security issue`;
       expect(() => {
         aggregateReviewMetrics(reviews);
       }).toThrow(new TypeError('Invalid input: lgtm must be a boolean. Received number: 1'));
+    });
+  });
+
+  describe('Issue #17: SECURITY - Prevent score gaming via issue fragmentation', () => {
+    test('should deduplicate exact duplicate critical issues', () => {
+      const reviewComment = `
+        Security vulnerability in authentication
+        Security vulnerability in authentication
+        Security vulnerability in authentication
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      // Should deduplicate to 1 unique issue
+      expect(result.critical.length).toBe(1);
+    });
+
+    test('should deduplicate exact duplicate warnings', () => {
+      const reviewComment = `
+        Warning: potential issue with null handling
+        Warning: potential issue with null handling
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      expect(result.warnings.length).toBe(1);
+    });
+
+    test('should deduplicate exact duplicate suggestions', () => {
+      const reviewComment = `
+        Consider using async/await
+        Consider using async/await
+        Consider using async/await
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      expect(result.suggestions.length).toBe(1);
+    });
+
+    test('should keep genuinely different issues', () => {
+      const reviewComment = `
+        Security vulnerability in authentication
+        Security issue in API endpoint
+        Critical bug in database query
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      // All are different, should keep all 3
+      expect(result.critical.length).toBe(3);
+    });
+
+    test('should handle mixed duplicates and unique issues', () => {
+      const reviewComment = `
+        Security vulnerability found
+        Security vulnerability found
+        Critical bug detected
+        Data loss possible
+        Data loss possible
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      // Should have 3 unique: security (dedup to 1), critical bug, data loss (dedup to 1)
+      expect(result.critical.length).toBe(3);
+    });
+
+    test('should deduplicate case-insensitively', () => {
+      const reviewComment = `
+        Security Vulnerability Found
+        security vulnerability found
+        SECURITY VULNERABILITY FOUND
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      expect(result.critical.length).toBe(1);
+    });
+
+    test('should trim whitespace before deduplication', () => {
+      const reviewComment = `
+        Security vulnerability
+          Security vulnerability
+           Security vulnerability
+      `;
+
+      const result = analyzeReviewSeverity(reviewComment);
+
+      expect(result.critical.length).toBe(1);
     });
   });
 });

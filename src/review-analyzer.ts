@@ -69,10 +69,38 @@ export interface ReviewerAuth {
 }
 
 /**
+ * Deduplicates an array of issue strings
+ * Issue #17: Prevent score gaming via issue fragmentation
+ *
+ * Normalizes strings (lowercase + trim) before comparison to detect duplicates
+ * This prevents gaming the system by repeating the same issue multiple times
+ *
+ * @param issues - Array of issue strings to deduplicate
+ * @returns Deduplicated array with only unique issues
+ */
+function deduplicateIssues(issues: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const issue of issues) {
+    // Normalize: trim whitespace and convert to lowercase for comparison
+    const normalized = issue.trim().toLowerCase();
+
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      unique.push(issue); // Keep original formatting in output
+    }
+  }
+
+  return unique;
+}
+
+/**
  * Analyzes review content to extract severity levels
  * Uses pattern matching and NLP techniques to categorize issues
  *
  * Issue #15: Input validation and ReDoS protection
+ * Issue #17: Deduplicates issues to prevent score gaming
  */
 export function analyzeReviewSeverity(reviewComment: string): {
   critical: string[];
@@ -164,7 +192,13 @@ export function analyzeReviewSeverity(reviewComment: string): {
     }
   }
 
-  return { critical, warnings, suggestions };
+  // Issue #17: Deduplicate issues to prevent score gaming via fragmentation
+  // Normalize and remove duplicates from each severity category
+  return {
+    critical: deduplicateIssues(critical),
+    warnings: deduplicateIssues(warnings),
+    suggestions: deduplicateIssues(suggestions)
+  };
 }
 
 /**

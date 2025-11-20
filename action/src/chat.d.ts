@@ -10,5 +10,7 @@ export declare class Chat {
     codeReview: (patch: string) => Promise<{
         lgtm: boolean;
         review_comment: string;
+        issues: any[];
+        details: string;
     }>;
 }
