@@ -186,6 +186,14 @@ export function calculateQualityScore(
   reviewerAuth?: ReviewerAuth,
   _requiredApprovers: number = 1
 ): CodeQualityScore {
+  // SECURITY: Validate lgtm parameter type before making security decisions
+  if (typeof lgtm !== 'boolean') {
+    throw new Error(
+      'Invalid input: lgtm parameter must be a boolean. ' +
+      `Received ${typeof lgtm}: ${JSON.stringify(lgtm)}`
+    );
+  }
+
   // SECURITY: Enforce authorization when LGTM is claimed
   if (lgtm && !reviewerAuth) {
     throw new Error(

@@ -639,7 +639,7 @@ describe('review-analyzer', () => {
       expect(result.score).toBeGreaterThanOrEqual(0);
     });
 
-    test('calculateQualityScore with non-boolean lgtm (string "true") coerces to truthy', () => {
+    test('calculateQualityScore should reject non-boolean lgtm (string)', () => {
       const reviewComment = 'Looks good!';
       const validAuth = {
         isVerified: true,
@@ -648,14 +648,13 @@ describe('review-analyzer', () => {
         verifiedAt: new Date()
       } as ReviewerAuth;
 
-      // String "true" is truthy, coerces to true via JavaScript truthiness
-      // Implementation doesn't explicitly accept strings, just uses boolean context
+      // SECURITY: Don't accept non-boolean values for security-sensitive lgtm flag
       expect(() => {
         calculateQualityScore(reviewComment, "true" as any, validAuth);
-      }).not.toThrow();
+      }).toThrow('Invalid input: lgtm parameter must be a boolean');
     });
 
-    test('calculateQualityScore with non-boolean lgtm (number 1) coerces to truthy', () => {
+    test('calculateQualityScore should reject non-boolean lgtm (number)', () => {
       const reviewComment = 'Looks good!';
       const validAuth = {
         isVerified: true,
@@ -664,41 +663,37 @@ describe('review-analyzer', () => {
         verifiedAt: new Date()
       } as ReviewerAuth;
 
-      // Number 1 is truthy, coerces to true via JavaScript truthiness
-      // Implementation doesn't explicitly accept numbers, just uses boolean context
+      // SECURITY: Don't accept non-boolean values for security-sensitive lgtm flag
       expect(() => {
         calculateQualityScore(reviewComment, 1 as any, validAuth);
-      }).not.toThrow();
+      }).toThrow('Invalid input: lgtm parameter must be a boolean');
     });
 
-    test('calculateQualityScore with non-boolean lgtm (number 0) coerces to falsy', () => {
+    test('calculateQualityScore should reject non-boolean lgtm (number 0)', () => {
       const reviewComment = 'Needs work';
 
-      // Number 0 is falsy, coerces to false via JavaScript truthiness
-      // Doesn't require auth because falsy values don't trigger LGTM path
+      // SECURITY: Reject non-boolean even if falsy
       expect(() => {
         calculateQualityScore(reviewComment, 0 as any);
-      }).not.toThrow();
+      }).toThrow('Invalid input: lgtm parameter must be a boolean');
     });
 
-    test('calculateQualityScore with non-boolean lgtm (empty string) coerces to falsy', () => {
+    test('calculateQualityScore should reject non-boolean lgtm (empty string)', () => {
       const reviewComment = 'Needs work';
 
-      // Empty string is falsy, coerces to false via JavaScript truthiness
-      // Doesn't require auth because falsy values don't trigger LGTM path
+      // SECURITY: Reject non-boolean even if falsy
       expect(() => {
         calculateQualityScore(reviewComment, "" as any);
-      }).not.toThrow();
+      }).toThrow('Invalid input: lgtm parameter must be a boolean');
     });
 
-    test('calculateQualityScore with non-boolean lgtm (undefined) coerces to falsy', () => {
+    test('calculateQualityScore should reject non-boolean lgtm (undefined)', () => {
       const reviewComment = 'Needs work';
 
-      // undefined is falsy, coerces to false via JavaScript truthiness
-      // Doesn't require auth because falsy values don't trigger LGTM path
+      // SECURITY: Reject non-boolean even if falsy
       expect(() => {
         calculateQualityScore(reviewComment, undefined as any);
-      }).not.toThrow();
+      }).toThrow('Invalid input: lgtm parameter must be a boolean');
     });
   });
 
