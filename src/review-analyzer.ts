@@ -346,9 +346,11 @@ export function aggregateReviewMetrics(
 /**
  * Issue #29: Authorization cache for rate limiting
  * Caches authorization results to avoid redundant API calls
+ * Implements bounded LRU-style cache with automatic eviction
  */
 const authCache = new Map<string, { result: ReviewerAuth; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
 
 /**
  * Clears the authorization cache
@@ -395,17 +397,29 @@ export async function verifyReviewerAuthorization(
   githubToken: string
 ): Promise<ReviewerAuth> {
   // Issue #29: Check cache first to avoid redundant API calls
-  const cacheKey = `${repoOwner}/${repoName}/${githubLogin}`;
+  // URL encode parameters to handle special characters
+  const encodedOwner = encodeURIComponent(repoOwner);
+  const encodedRepo = encodeURIComponent(repoName);
+  const encodedLogin = encodeURIComponent(githubLogin);
+  const cacheKey = `${encodedOwner}/${encodedRepo}/${encodedLogin}`;
+
   const cached = authCache.get(cacheKey);
 
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.result;
   }
+
+  // Evict oldest entries if cache is full (LRU-style)
+  if (authCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = authCache.keys().next().value;
+    if (oldestKey) authCache.delete(oldestKey);
+  }
+
   try {
     // Query GitHub API to verify reviewer permissions
     // GET /repos/{owner}/{repo}/collaborators/{username}/permission
     const response = await globalThis.fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/collaborators/${githubLogin}/permission`,
+      `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/collaborators/${encodedLogin}/permission`,
       {
         method: 'GET',
         headers: {
