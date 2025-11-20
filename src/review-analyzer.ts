@@ -187,13 +187,14 @@ export function calculateQualityScore(
   else category = 'critical';
 
   // Simple breakdown (could be enhanced with more sophisticated analysis)
+  // Issue #11: Each dimension starts from 100 and deducts only relevant issues
   const breakdown = {
-    security: Math.max(0, score - critical.filter(c =>
+    security: Math.max(0, 100 - critical.filter(c =>
       c.toLowerCase().includes('security')).length * 40),
-    maintainability: Math.max(0, score - warnings.length * 10),
-    performance: Math.max(0, score - warnings.filter(w =>
+    maintainability: Math.max(0, 100 - warnings.length * 10),
+    performance: Math.max(0, 100 - warnings.filter(w =>
       w.toLowerCase().includes('performance')).length * 20),
-    testability: Math.max(0, score - suggestions.filter(s =>
+    testability: Math.max(0, 100 - suggestions.filter(s =>
       s.toLowerCase().includes('test')).length * 10),
   };
 
