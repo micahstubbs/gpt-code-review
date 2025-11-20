@@ -406,7 +406,25 @@ export async function verifyReviewerAuthorization(
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as { permission: string; user: { login: string } };
+    const data = await response.json() as { permission?: string; user?: { login?: string } | null };
+
+    // Issue #28: Validate response structure before dereferencing
+    // Fail secure if response is malformed
+    if (!data || !data.user || typeof data.user.login !== 'string' || typeof data.permission !== 'string') {
+      console.error('Malformed GitHub API response:', {
+        hasData: !!data,
+        hasUser: !!(data?.user),
+        hasLogin: typeof data?.user?.login,
+        hasPermission: typeof data?.permission
+      });
+
+      return {
+        isVerified: false,
+        login: githubLogin,
+        hasWriteAccess: false,
+        verifiedAt: new Date()
+      };
+    }
 
     // Verify the login matches (security check)
     const isVerified = data.user.login.toLowerCase() === githubLogin.toLowerCase();
