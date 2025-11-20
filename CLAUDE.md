@@ -184,6 +184,36 @@ yarn test
 
 Test fixtures are in `test/fixtures/`
 
+## Git Workflow
+
+### Branch Naming Convention
+
+All feature and fix branches must follow this naming format:
+
+```
+<gh-issue-number>/description-of-change
+```
+
+**Examples:**
+- `30/phase1-critical-security-fixes` - Implementation for issue #30
+- `25/fix-404-authorization-bug` - Fix for issue #25
+- `14/implement-lgtm-authorization` - Feature for issue #14
+
+**Rules:**
+- Always create a GitHub issue first
+- Use the issue number as the branch prefix
+- Use lowercase with hyphens for description
+- Keep description concise but descriptive
+
+### Planning and Documentation
+
+When working on significant features or fixes:
+1. Create a GitHub issue for the work
+2. Create design/planning documents in `issues/<issue-number>/` directory
+3. Checkout branch using the naming convention above
+4. Implement changes following the design
+5. Create PR when complete
+
 ## Important Notes
 
 - **Use yarn, not npm** - Project uses Yarn Classic (v1)
