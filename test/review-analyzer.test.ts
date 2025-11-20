@@ -1552,7 +1552,7 @@ CRITICAL: Another security issue`;
 
         const result = calculateQualityScore(reviewComment, false);
 
-        // Score should be 100 - (3 * 30 + 1 * 25) = 100 - 115 = 0 (clamped)
+        // Score should be 100 - (3 * 30 + 1 * 25) = 100 - 115 = -15, clamped to 0
         // This verifies the softened weight is 25 (base 30 * (1 - 5/30) = 25)
         expect(result.score).toBe(0);
       });
