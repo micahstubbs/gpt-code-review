@@ -649,12 +649,10 @@ describe('review-analyzer', () => {
       } as ReviewerAuth;
 
       // SECURITY: Don't accept non-boolean values for security-sensitive lgtm flag
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, "true" as any, validAuth);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, "true" as any, validAuth);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received string: true'));
     });
 
     test('calculateQualityScore should reject non-boolean lgtm (number)', () => {
@@ -667,48 +665,40 @@ describe('review-analyzer', () => {
       } as ReviewerAuth;
 
       // SECURITY: Don't accept non-boolean values for security-sensitive lgtm flag
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, 1 as any, validAuth);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, 1 as any, validAuth);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received number: 1'));
     });
 
     test('calculateQualityScore should reject non-boolean lgtm (number 0)', () => {
       const reviewComment = 'Needs work';
 
       // SECURITY: Reject non-boolean even if falsy
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, 0 as any);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, 0 as any);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received number: 0'));
     });
 
     test('calculateQualityScore should reject non-boolean lgtm (empty string)', () => {
       const reviewComment = 'Needs work';
 
       // SECURITY: Reject non-boolean even if falsy
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, "" as any);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, "" as any);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received string: '));
     });
 
     test('calculateQualityScore should reject non-boolean lgtm (undefined)', () => {
       const reviewComment = 'Needs work';
 
       // SECURITY: Reject non-boolean even if falsy
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, undefined as any);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, undefined as any);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received undefined: undefined'));
     });
 
     test('calculateQualityScore should reject non-boolean lgtm (BigInt) without serialization error', () => {
@@ -716,12 +706,10 @@ describe('review-analyzer', () => {
 
       // SECURITY: Reject BigInt without JSON.stringify throwing TypeError
       // Uses String() for safe serialization
+      // Single invocation with combined assertion
       expect(() => {
         calculateQualityScore(reviewComment, BigInt(1) as any);
-      }).toThrow(TypeError);
-      expect(() => {
-        calculateQualityScore(reviewComment, BigInt(1) as any);
-      }).toThrow('Invalid input: lgtm parameter must be a boolean');
+      }).toThrow(new TypeError('Invalid input: lgtm parameter must be a boolean. Received bigint: 1'));
     });
   });
 
