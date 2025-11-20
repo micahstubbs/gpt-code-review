@@ -606,9 +606,9 @@ describe('review-analyzer', () => {
       }).not.toThrow();
     });
 
-    test('calculateQualityScore should produce valid score with empty review', () => {
-      // Review with no severity issues should not crash
-      const reviewComment = 'Everything looks fine.';
+    test('calculateQualityScore should produce valid score with minimal review', () => {
+      // Minimal non-empty review (Issue #15 requires non-empty input)
+      const reviewComment = 'Looks good';
 
       const result = calculateQualityScore(reviewComment, false);
       expect(result.score).toBe(100); // No issues = perfect score
@@ -627,7 +627,7 @@ describe('review-analyzer', () => {
       expect(result.score).toBeGreaterThanOrEqual(0);
     });
 
-    test('calculateQualityScore with non-boolean lgtm (string "true") should throw', () => {
+    test('calculateQualityScore with non-boolean lgtm (string "true") should work with valid auth', () => {
       const reviewComment = 'Looks good!';
       const validAuth = {
         isVerified: true,
