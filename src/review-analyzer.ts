@@ -85,7 +85,16 @@ export function analyzeReviewSeverity(reviewComment: string): {
   }
 
   // Check if input is empty or whitespace-only
-  if (reviewComment.trim().length === 0) {
+  // Don't use trim() to avoid allocating duplicate string on large inputs
+  let hasNonWhitespace = false;
+  for (let i = 0; i < reviewComment.length; i++) {
+    const char = reviewComment[i];
+    if (char !== ' ' && char !== '\t' && char !== '\n' && char !== '\r') {
+      hasNonWhitespace = true;
+      break;
+    }
+  }
+  if (!hasNonWhitespace) {
     throw new Error('Invalid input: reviewComment cannot be empty');
   }
 
@@ -97,21 +106,25 @@ export function analyzeReviewSeverity(reviewComment: string): {
 
   // Check maximum number of lines (1000 lines) to prevent DoS
   // Count newlines and handle trailing newline correctly
+  // Use early-exit to avoid processing malicious oversized inputs
   const MAX_LINES = 1000;
   let lineCount = 0;
   for (let i = 0; i < reviewComment.length; i++) {
     if (reviewComment[i] === '\n') {
       lineCount++;
+      // Early exit if exceeded (DoS protection)
+      if (lineCount > MAX_LINES) {
+        throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+      }
     }
   }
   // If string doesn't end with newline, add 1 for the last line
   // If it ends with newline, lineCount already represents number of lines
   if (reviewComment[reviewComment.length - 1] !== '\n') {
     lineCount++;
-  }
-  // Check if we've exceeded the limit
-  if (lineCount > MAX_LINES) {
-    throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+    if (lineCount > MAX_LINES) {
+      throw new Error(`Invalid input: reviewComment exceeds maximum of ${MAX_LINES} lines`);
+    }
   }
 
   const critical: string[] = [];
