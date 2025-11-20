@@ -77,6 +77,24 @@ export function analyzeReviewSeverity(reviewComment: string): {
   warnings: string[];
   suggestions: string[];
 } {
+  // Input validation (Issue #15)
+  if (typeof reviewComment !== 'string') {
+    throw new Error('Invalid input: reviewComment must be a string');
+  }
+
+  if (reviewComment.trim() === '') {
+    throw new Error('Invalid input: reviewComment cannot be empty');
+  }
+
+  if (reviewComment.length > 10000) {
+    throw new Error('Invalid input: reviewComment exceeds maximum length of 10000 characters');
+  }
+
+  const lineCount = reviewComment.split('\n').length;
+  if (lineCount > 1000) {
+    throw new Error('Invalid input: reviewComment exceeds maximum of 1000 lines');
+  }
+
   const critical: string[] = [];
   const warnings: string[] = [];
   const suggestions: string[] = [];
@@ -160,13 +178,18 @@ export function calculateQualityScore(
 
   const severity = analyzeReviewSeverity(reviewComment);
 
+  // Defensive defaults: Protect against undefined/null arrays from analyzeReviewSeverity
+  // Issue #21: Add defensive defaults for undefined severity arrays
+  // Also guard against severity itself being null/undefined (defense in depth)
+  const { critical = [], warnings = [], suggestions = [] } = severity ?? {};
+
   let score = 100;
 
   // Calculate critical penalty with diminishing returns built in
   // First 3 criticals: full penalty (30 points each)
   // Additional criticals: softened penalty (25 points each - 16.67% reduction)
   // This prevents unfairly harsh scoring when multiple related issues exist
-  const criticalCount = severity.critical.length;
+  const criticalCount = critical.length;
   const CRITICAL_SOFTENED_WEIGHT = Math.round(
     SCORING_CONFIG.CRITICAL_BASE_WEIGHT * (1 - SCORING_CONFIG.SOFTEN_FACTOR)
   );
@@ -177,8 +200,8 @@ export function calculateQualityScore(
 
   // Deduct points based on issues found with severity weighting
   score -= criticalPenalty; // Critical issues with diminishing returns
-  score -= severity.warnings.length * SCORING_CONFIG.WARNING_WEIGHT;
-  score -= severity.suggestions.length * SCORING_CONFIG.SUGGESTION_WEIGHT;
+  score -= warnings.length * SCORING_CONFIG.WARNING_WEIGHT;
+  score -= suggestions.length * SCORING_CONFIG.SUGGESTION_WEIGHT;
 
   // LGTM bonus - ONLY if reviewer is verified and authorized
   // SECURITY: Never trust LGTM from parsed comment content alone
@@ -186,12 +209,12 @@ export function calculateQualityScore(
     ? (reviewerAuth.isVerified && reviewerAuth.hasWriteAccess && lgtm)
     : false; // Default to false if no auth provided
 
-  if (isAuthorizedLgtm && severity.critical.length === 0) {
+  if (isAuthorizedLgtm && critical.length === 0) {
     score = Math.min(100, score + SCORING_CONFIG.LGTM_BONUS);
   }
 
   // Penalty for LGTM with critical issues (authorized reviewer made a mistake)
-  if (isAuthorizedLgtm && severity.critical.length > 0) {
+  if (isAuthorizedLgtm && critical.length > 0) {
     score -= SCORING_CONFIG.LGTM_WITH_CRITICALS_PENALTY;
   }
 
@@ -206,13 +229,14 @@ export function calculateQualityScore(
   else category = 'critical';
 
   // Simple breakdown (could be enhanced with more sophisticated analysis)
+  // Issue #11: Each dimension starts from 100 and deducts only relevant issues
   const breakdown = {
-    security: Math.max(0, score - severity.critical.filter(c =>
+    security: Math.max(0, 100 - critical.filter(c =>
       c.toLowerCase().includes('security')).length * 40),
-    maintainability: Math.max(0, score - severity.warnings.length * 10),
-    performance: Math.max(0, score - severity.warnings.filter(w =>
+    maintainability: Math.max(0, 100 - warnings.length * 10),
+    performance: Math.max(0, 100 - warnings.filter(w =>
       w.toLowerCase().includes('performance')).length * 20),
-    testability: Math.max(0, score - severity.suggestions.filter(s =>
+    testability: Math.max(0, 100 - suggestions.filter(s =>
       s.toLowerCase().includes('test')).length * 10),
   };
 
