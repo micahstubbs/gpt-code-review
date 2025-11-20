@@ -55,12 +55,29 @@ export interface ReviewerAuth {
 /**
  * Analyzes review content to extract severity levels
  * Uses pattern matching and NLP techniques to categorize issues
+ *
+ * Issue #15: Input validation and ReDoS protection
  */
 export function analyzeReviewSeverity(reviewComment: string): {
   critical: string[];
   warnings: string[];
   suggestions: string[];
 } {
+  // Input validation (Issue #15)
+  if (typeof reviewComment !== 'string') {
+    throw new Error('Invalid input: reviewComment must be a string');
+  }
+  if (reviewComment.trim() === '') {
+    throw new Error('Invalid input: reviewComment cannot be empty');
+  }
+  if (reviewComment.length > 10000) {
+    throw new Error('Invalid input: reviewComment exceeds maximum length of 10000 characters');
+  }
+  const lineCount = reviewComment.split('\n').length;
+  if (lineCount > 1000) {
+    throw new Error('Invalid input: reviewComment exceeds maximum of 1000 lines');
+  }
+
   const critical: string[] = [];
   const warnings: string[] = [];
   const suggestions: string[] = [];
@@ -144,9 +161,9 @@ export function calculateQualityScore(
 
   const severity = analyzeReviewSeverity(reviewComment);
 
-  // Defensive defaults: Protect against undefined/null arrays from analyzeReviewSeverity
+  // Defensive defaults: Protect against undefined/null severity object
   // Issue #21: Add defensive defaults for undefined severity arrays
-  const { critical = [], warnings = [], suggestions = [] } = severity;
+  const { critical = [], warnings = [], suggestions = [] } = severity ?? {};
 
   let score = 100;
 
