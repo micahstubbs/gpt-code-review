@@ -32,6 +32,33 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 Work in Progress pull requests are also welcome to get feedback early on, or if there is something blocked you.
 
+## CI Workflow Notes
+
+### Workflow Validation for PRs
+
+If your PR modifies `.github/workflows/claude-code-review.yml`, the Claude Code Review CI check will fail with a 401 Unauthorized error. This is a GitHub security feature, not a bug.
+
+**Why this happens:** GitHub requires workflow files to be identical to the default branch when requesting certain tokens (such as `id-token`). If the workflow content differs between your PR branch and `main`, validation fails.
+
+**Workaround for affected PRs:**
+
+If you need to merge a PR that includes other changes but is blocked by workflow file modifications:
+
+```bash
+git checkout main -- .github/workflows/claude-code-review.yml
+git add .github/workflows/claude-code-review.yml
+git commit -m "Sync workflow with main for PR validation"
+git push
+```
+
+**For intentional workflow updates:**
+
+If you need to update the workflow file itself:
+1. Create a separate PR containing only the workflow changes
+2. That PR's Claude Code Review check will fail (expected)
+3. Get manual review and merge that PR to `main` first
+4. Subsequent PRs will use the updated workflow
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
