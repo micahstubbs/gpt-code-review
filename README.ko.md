@@ -12,7 +12,7 @@ Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md)
 
 ### 설치
 
-설치: [apps/cr-gpt](https://github.com/apps/cr-gpt);
+설치: [GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 ### 설정
 

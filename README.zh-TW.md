@@ -12,7 +12,7 @@
 
 ### 安裝
 
-安裝：[apps/cr-gpt](https://github.com/apps/cr-gpt);
+安裝：[GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 ### 設定
 

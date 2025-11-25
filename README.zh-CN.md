@@ -15,7 +15,7 @@
 
 ### 安装
 
-安装：[apps/cr-gpt](https://github.com/apps/cr-gpt);
+安装：[GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 ### 配置
 
