@@ -1,4 +1,5 @@
 import { OpenAI, AzureOpenAI } from 'openai';
+import log from './log.js';
 
 export class Chat {
   private openai: OpenAI | AzureOpenAI;
@@ -37,20 +38,26 @@ export class Chat {
 
   // Get valid verbosity for model (gpt-5.1-codex only supports 'medium')
   private getValidVerbosity(model: string): 'low' | 'medium' | 'high' {
-    const requestedVerbosity = process.env.VERBOSITY as 'low' | 'medium' | 'high' | undefined;
+    const requestedVerbosity = process.env.VERBOSITY;
+
+    // Validate verbosity is a known value
+    const validVerbosities: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
+    const typedVerbosity = validVerbosities.includes(requestedVerbosity as any)
+      ? (requestedVerbosity as 'low' | 'medium' | 'high')
+      : undefined;
 
     // gpt-5.1-codex only supports 'medium' verbosity
     if (model.includes('gpt-5.1-codex')) {
-      if (requestedVerbosity && requestedVerbosity !== 'medium') {
-        console.log(
-          `Warning: ${model} only supports verbosity 'medium'. Ignoring VERBOSITY=${requestedVerbosity}`
+      if (typedVerbosity && typedVerbosity !== 'medium') {
+        log.warn(
+          `${model} only supports verbosity 'medium'. Ignoring VERBOSITY=${requestedVerbosity}`
         );
       }
       return 'medium';
     }
 
     // Other models support low, medium, high - default to medium for safety
-    return requestedVerbosity || 'medium';
+    return typedVerbosity || 'medium';
   }
 
   private generatePrompt = (patch: string) => {
