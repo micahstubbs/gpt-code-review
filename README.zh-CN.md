@@ -4,9 +4,6 @@
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
-> 想在 Gitlab 使用？
-> 试试 https://github.com/nangongchengfeng/Chat-CodeReview.git
-
 翻译版本：[英语](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
 ## 用法
