@@ -146,4 +146,4 @@ this project is inpired by [codereview.gpt](https://github.com/sturdy-dev/codere
 
 ## License
 
-[ISC](LICENSE) © 2023 anc95
+[ISC](LICENSE) © 2025 anc95, micahstubbs, and contributors

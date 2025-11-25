@@ -115,4 +115,4 @@ docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> cr-bot
 
 ## License
 
-[ISC](LICENSE) © 2023 anc95
+[ISC](LICENSE) © 2025 anc95, micahstubbs, and contributors
