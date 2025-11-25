@@ -1,11 +1,13 @@
-# 代码审查机器人
+# GPT 5.x PR Reviewer
 
-> 由 ChatGPT 提供支持的代码审查机器人
+> 使用 GPT-5.1、GPT-5.1-Codex、GPT-5-Pro 和 GPT-4o 的 AI 代码审查工具
+
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 > 想在 Gitlab 使用？
 > 试试 https://github.com/nangongchengfeng/Chat-CodeReview.git
 
-翻译版本：[英语](./README.md)\|[简体中文](./README.zh-CN.md)\|[繁體中文](./README.zh-TW.md) \| [한국어](./README.ko.md) \| [日本語](./README.ja.md)
+翻译版本：[英语](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
 ## 用法
 
@@ -35,9 +37,7 @@
 
 ### 使用 Github Action
 
-> 这是推荐的方式，因为 github bot 在一个不起眼的 vps 上服务，我不能确保它总是稳定的
-
-[actions/chatgpt-codereviewer](https://github.com/marketplace/actions/chatgpt-codereviewer)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 1.  添加`OPENAI_API_KEY`到你的 github action 密钥
 2.  创建`.github/workflows/cr.yml`添加以下内容
@@ -51,20 +51,21 @@ permissions:
 
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, synchronize]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # optional
+          MODEL: gpt-5.1-codex # 推荐使用
+          # 支持的模型: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
           LANGUAGE: Chinese
           PROMPT:
-          IGNORE_PATTERNS: /node_modules,*.md # Regex pattern to ignore files, separated by comma
+          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
 ## 自托管

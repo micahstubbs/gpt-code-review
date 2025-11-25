@@ -1,6 +1,8 @@
-# 程式碼審查機器人
+# GPT 5.x PR Reviewer
 
-> 由 ChatGPT 提供支援的程式碼審查機器人
+> 使用 GPT-5.1、GPT-5.1-Codex、GPT-5-Pro 和 GPT-4o 的 AI 程式碼審查工具
+
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 翻譯版本：[English](./README.md) | [簡體中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
@@ -33,7 +35,7 @@
 
 ## 使用 Github Actions
 
-[actions/chatgpt-codereviewer](https://github.com/marketplace/actions/chatgpt-codereviewer)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 1. 新增 `OPENAI_API_KEY` 到你的 github actions secrets
 2. 建立 `.github/workflows/cr.yml` 新增以下內容
@@ -51,23 +53,22 @@ on:
 
 jobs:
   test:
-    # if: ${{ contains(github.event.*.labels.*.name, 'gpt review') }} # Optional; to run only when a label is attached
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Optional
+          MODEL: gpt-5.1-codex # 推薦使用
+          # 支援的模型: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
           LANGUAGE: Chinese
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL: gpt-3.5-turbo # https://platform.openai.com/docs/models
-          PROMPT: # example: Please check if there are any confusions or irregularities in the following code diff:
-          top_p: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-top_p
-          temperature: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-temperature
+          PROMPT:
+          top_p: 1
+          temperature: 1
           max_tokens: 10000
-          MAX_PATCH_LENGTH: 10000 # if the patch/diff length is large than MAX_PATCH_LENGTH, will be ignored and won't review. By default, with no MAX_PATCH_LENGTH set, there is also no limit for the patch/diff length.
-          IGNORE_PATTERNS: /node_modules,*.md # Regex pattern to ignore files, separated by comma
+          MAX_PATCH_LENGTH: 10000
+          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
 ## 自我託管

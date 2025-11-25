@@ -1,6 +1,8 @@
-# CodeReview BOT
+# GPT 5.x PR Reviewer
 
-> cr bot은 ChatGPT를 활용한 코드리뷰 로봇입니다.
+> GPT-5.1, GPT-5.1-Codex, GPT-5-Pro, GPT-4o를 사용한 AI 코드 리뷰 도구
+
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
@@ -33,9 +35,7 @@ Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md)
 
 ### Github Actions 사용하기
 
-> 깃허브 봇이 humble vps에서 서비스되므로, 항상 안정적인 상태임을 보장할 수 없기 때문에 이 방법을 권장합니다.
-
-[actions/chatgpt-codereviewer](https://github.com/marketplace/actions/chatgpt-codereviewer)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 1. `OPENAI_API_KEY` 를 당신의 github actions secrets 에 추가합니다.
 2. `.github/workflows/cr.yml` 를 생성하고, 아래의 내용을 추가합니다.
@@ -55,14 +55,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # optional
+          MODEL: gpt-5.1-codex # 권장
+          # 지원 모델: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
           LANGUAGE: Korean
           PROMPT:
-          IGNORE_PATTERNS: /node_modules,*.md # Regex pattern to ignore files, separated by comma
+          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
 ## Self-hosting

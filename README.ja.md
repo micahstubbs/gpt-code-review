@@ -1,6 +1,8 @@
-# CodeReview BOT
+# GPT 5.x PR Reviewer
 
-> A code review robot powered by ChatGPT
+> GPT-5.1、GPT-5.1-Codex、GPT-5-Pro、GPT-4o を使用した AI コードレビューツール
+
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
 Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
@@ -31,13 +33,11 @@ example:
 
 <img width="1052" alt="image" src="https://user-images.githubusercontent.com/13167934/218999459-812206e1-d8d2-4900-8ce8-19b5b6e1f5cb.png">
 
-### Using Github Actions
+### Github Actions を使用する
 
-> 基本的には、Github Actions での利用を推奨します。
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
-[actions/chatgpt-codereviewer](https://github.com/marketplace/actions/chatgpt-codereviewer)
-
-1. `OPENAI_API_KEY` を設定する
+1. `OPENAI_API_KEY` を github actions secrets に追加する
 2. 以下の例のように `.github/workflows/cr.yml` を作成する
 
 ```yml
@@ -53,20 +53,19 @@ on:
 
 jobs:
   test:
-    if: ${{ contains(github.event.*.labels.*.name, 'gpt review') }} # Optional; to run only when a label is attached
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Optional
-          LANGUAGE: Chinese
-          MODEL:
+          MODEL: gpt-5.1-codex # 推奨
+          # サポートモデル: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
+          LANGUAGE: Japanese
           PROMPT:
           top_p: 1
           temperature: 1
-          IGNORE_PATTERNS: /node_modules,*.md # Regex pattern to ignore files, separated by comma
+          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
 ## Self-hosting
