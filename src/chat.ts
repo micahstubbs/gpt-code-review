@@ -42,7 +42,9 @@ export class Chat {
 
     // Validate verbosity is a known value
     const validVerbosities: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
-    const typedVerbosity = validVerbosities.includes(requestedVerbosity as any)
+    const typedVerbosity = validVerbosities.includes(
+      requestedVerbosity as 'low' | 'medium' | 'high'
+    )
       ? (requestedVerbosity as 'low' | 'medium' | 'high')
       : undefined;
 
