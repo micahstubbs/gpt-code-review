@@ -18,7 +18,7 @@ interface CodeReviewResponse {
  * @param text - Raw text response from LLM
  * @returns Parsed JSON object or null if extraction fails
  */
-function extractJsonFromText(text: string): CodeReviewResponse | null {
+export function extractJsonFromText(text: string): CodeReviewResponse | null {
   if (!text || typeof text !== 'string') {
     return null;
   }
@@ -87,7 +87,7 @@ function extractJsonFromText(text: string): CodeReviewResponse | null {
 /**
  * Validate that an object has the expected CodeReviewResponse structure
  */
-function isValidCodeReviewResponse(obj: unknown): obj is CodeReviewResponse {
+export function isValidCodeReviewResponse(obj: unknown): obj is CodeReviewResponse {
   if (!obj || typeof obj !== 'object') {
     return false;
   }

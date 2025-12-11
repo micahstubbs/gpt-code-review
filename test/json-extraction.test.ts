@@ -3,11 +3,9 @@
  * Used when models like GPT-5.2 Pro don't support structured outputs
  */
 
-// Import the module to access internal functions via the Chat class
-import { Chat } from '../src/chat';
+import { Chat, extractJsonFromText, isValidCodeReviewResponse } from '../src/chat';
 
-// We need to test the extractJsonFromText function which is not exported
-// So we'll test it indirectly through realistic scenarios
+// Now exported from src/chat.ts for direct testing
 
 describe('JSON extraction from LLM responses', () => {
   describe('Direct JSON parsing', () => {
@@ -58,76 +56,9 @@ describe('JSON extraction from LLM responses', () => {
 
 /**
  * Unit tests for JSON extraction strategies
- * These test the extraction logic directly by creating test scenarios
+ * Tests the production extractJsonFromText function directly
  */
 describe('JSON extraction strategies', () => {
-  // Helper to simulate the extraction logic
-  function extractJsonFromText(text: string): any {
-    if (!text || typeof text !== 'string') {
-      return null;
-    }
-
-    // Strategy 1: Try direct JSON parse
-    try {
-      const parsed = JSON.parse(text.trim());
-      if (parsed && typeof parsed === 'object' && typeof parsed.lgtm === 'boolean') {
-        return parsed;
-      }
-    } catch {
-      // Continue
-    }
-
-    // Strategy 2: Extract from markdown code blocks
-    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      try {
-        const parsed = JSON.parse(codeBlockMatch[1].trim());
-        if (parsed && typeof parsed === 'object' && typeof parsed.lgtm === 'boolean') {
-          return parsed;
-        }
-      } catch {
-        // Continue
-      }
-    }
-
-    // Strategy 3: Find JSON object boundaries
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      try {
-        const jsonStr = text.substring(jsonStart, jsonEnd + 1);
-        const parsed = JSON.parse(jsonStr);
-        if (parsed && typeof parsed === 'object' && typeof parsed.lgtm === 'boolean') {
-          return parsed;
-        }
-      } catch {
-        // Continue
-      }
-    }
-
-    // Strategy 4: Fix common JSON issues
-    const cleanedText = text
-      .replace(/,\s*}/g, '}')
-      .replace(/,\s*]/g, ']')
-      .replace(/'/g, '"');
-
-    const cleanJsonStart = cleanedText.indexOf('{');
-    const cleanJsonEnd = cleanedText.lastIndexOf('}');
-    if (cleanJsonStart !== -1 && cleanJsonEnd !== -1 && cleanJsonEnd > cleanJsonStart) {
-      try {
-        const jsonStr = cleanedText.substring(cleanJsonStart, cleanJsonEnd + 1);
-        const parsed = JSON.parse(jsonStr);
-        if (parsed && typeof parsed === 'object' && typeof parsed.lgtm === 'boolean') {
-          return parsed;
-        }
-      } catch {
-        // All strategies failed
-      }
-    }
-
-    return null;
-  }
-
   test('extracts clean JSON', () => {
     const input = '{"lgtm": true, "review_comment": "LGTM", "issues": [], "details": "Clean code"}';
     const result = extractJsonFromText(input);
@@ -206,6 +137,12 @@ That concludes my review.`;
     expect(result).toBeNull();
   });
 
+  test('returns null for JSON without required issues array', () => {
+    const input = '{"lgtm": true, "review_comment": "Missing issues"}';
+    const result = extractJsonFromText(input);
+    expect(result).toBeNull();
+  });
+
   test('handles nested JSON in issues array', () => {
     const input = `{
       "lgtm": false,
@@ -221,5 +158,42 @@ That concludes my review.`;
     expect(result?.lgtm).toBe(false);
     expect(result?.issues).toHaveLength(2);
     expect(result?.issues[0].severity).toBe('critical');
+  });
+});
+
+/**
+ * Tests for isValidCodeReviewResponse validation function
+ */
+describe('isValidCodeReviewResponse', () => {
+  test('returns true for valid response with all fields', () => {
+    const obj = { lgtm: true, review_comment: 'OK', issues: [], details: 'Fine' };
+    expect(isValidCodeReviewResponse(obj)).toBe(true);
+  });
+
+  test('returns true for valid response with minimal required fields', () => {
+    const obj = { lgtm: false, issues: [] };
+    expect(isValidCodeReviewResponse(obj)).toBe(true);
+  });
+
+  test('returns false for null', () => {
+    expect(isValidCodeReviewResponse(null)).toBe(false);
+  });
+
+  test('returns false for non-object', () => {
+    expect(isValidCodeReviewResponse('string')).toBe(false);
+    expect(isValidCodeReviewResponse(123)).toBe(false);
+    expect(isValidCodeReviewResponse(undefined)).toBe(false);
+  });
+
+  test('returns false when lgtm is not boolean', () => {
+    expect(isValidCodeReviewResponse({ lgtm: 'true', issues: [] })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: 1, issues: [] })).toBe(false);
+    expect(isValidCodeReviewResponse({ issues: [] })).toBe(false);
+  });
+
+  test('returns false when issues is not array', () => {
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: 'none' })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: null })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true })).toBe(false);
   });
 });
