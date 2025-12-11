@@ -30,9 +30,16 @@ export class Chat {
     }
   }
 
-  // Detect if model requires Responses API (GPT-5.1+ models)
+  // Detect if model requires Responses API (GPT-5.1+ and GPT-5.2+ models)
   private isReasoningModel(model: string): boolean {
-    const reasoningModels = ['gpt-5.1', 'gpt-5.1-codex', 'gpt-5.1-codex-mini', 'gpt-5-pro'];
+    const reasoningModels = [
+      'gpt-5.1',
+      'gpt-5.1-codex',
+      'gpt-5.1-codex-mini',
+      'gpt-5-pro',
+      'gpt-5.2',
+      'gpt-5.2-pro',
+    ];
     return reasoningModels.some((m) => model.includes(m));
   }
 
@@ -318,9 +325,11 @@ export class Chat {
       };
     }
 
-    const model = process.env.MODEL || (this.isGithubModels ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+    const model =
+      process.env.MODEL ||
+      (this.isGithubModels ? 'openai/gpt-5.2-2025-12-11' : 'gpt-5.2-2025-12-11');
 
-    // Use Responses API for GPT-5.1+ models, Chat Completions API for others
+    // Use Responses API for GPT-5.1+ and GPT-5.2+ models, Chat Completions API for others
     if (this.isReasoningModel(model)) {
       return await this.codeReviewWithResponsesAPI(patch, model);
     } else {
