@@ -34,15 +34,16 @@ export function extractJsonFromText(text: string): CodeReviewResponse | null {
   }
 
   // Strategy 2: Extract from markdown code blocks (```json ... ``` or ``` ... ```)
-  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
+  // Check all code blocks to find the first valid JSON response
+  const codeBlockMatches = text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g);
+  for (const match of codeBlockMatches) {
     try {
-      const parsed = JSON.parse(codeBlockMatch[1].trim());
+      const parsed = JSON.parse(match[1].trim());
       if (isValidCodeReviewResponse(parsed)) {
         return parsed;
       }
     } catch {
-      // Continue to other strategies
+      // Try next code block
     }
   }
 
@@ -102,6 +103,17 @@ export function isValidCodeReviewResponse(obj: unknown): obj is CodeReviewRespon
   // issues must be an array (can be empty)
   if (!Array.isArray(response.issues)) {
     return false;
+  }
+
+  // Validate each issue has required structure
+  for (const issue of response.issues) {
+    if (!issue || typeof issue !== 'object') {
+      return false;
+    }
+    const issueObj = issue as Record<string, unknown>;
+    if (typeof issueObj.severity !== 'string' || typeof issueObj.message !== 'string') {
+      return false;
+    }
   }
 
   return true;

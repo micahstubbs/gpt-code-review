@@ -95,6 +95,25 @@ Let me know if you have questions.`;
     expect(result?.lgtm).toBe(true);
   });
 
+  test('extracts JSON from second code block when first is invalid', () => {
+    const input = `Here's some code:
+
+\`\`\`python
+def hello():
+    print("world")
+\`\`\`
+
+And here's the review:
+
+\`\`\`json
+{"lgtm": false, "review_comment": "Found issue", "issues": [{"severity": "warning", "message": "Test"}], "details": "Details"}
+\`\`\``;
+
+    const result = extractJsonFromText(input);
+    expect(result?.lgtm).toBe(false);
+    expect(result?.issues).toHaveLength(1);
+  });
+
   test('extracts JSON surrounded by text', () => {
     const input = `Based on my analysis, here is the result:
 {"lgtm": true, "review_comment": "Good", "issues": [], "details": "Clean"}
@@ -195,5 +214,28 @@ describe('isValidCodeReviewResponse', () => {
     expect(isValidCodeReviewResponse({ lgtm: true, issues: 'none' })).toBe(false);
     expect(isValidCodeReviewResponse({ lgtm: true, issues: null })).toBe(false);
     expect(isValidCodeReviewResponse({ lgtm: true })).toBe(false);
+  });
+
+  test('returns false when issues contain invalid objects', () => {
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: ['string'] })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: [123] })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: [null] })).toBe(false);
+  });
+
+  test('returns false when issue objects missing required fields', () => {
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: [{}] })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: [{ severity: 'warning' }] })).toBe(false);
+    expect(isValidCodeReviewResponse({ lgtm: true, issues: [{ message: 'test' }] })).toBe(false);
+  });
+
+  test('returns true when issues have valid structure', () => {
+    const response = {
+      lgtm: false,
+      issues: [
+        { severity: 'warning', message: 'test warning' },
+        { severity: 'critical', message: 'test critical' },
+      ],
+    };
+    expect(isValidCodeReviewResponse(response)).toBe(true);
   });
 });

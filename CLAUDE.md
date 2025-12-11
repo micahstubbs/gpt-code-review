@@ -87,23 +87,24 @@ Requires `.env` file with configuration (see `.env.example`)
 
 ## Model Support
 
-### Chat Completions API Models
+### Responses API Models (GPT-5.2+, GPT-5.1+) - Recommended
 
-- `gpt-4o`, `gpt-4o-mini` (recommended)
-- `gpt-3.5-turbo`
-
-### Responses API Models (GPT-5.1+)
-
-- `gpt-5.1` - Enhanced reasoning model
+- `gpt-5.2-2025-12-11` - **Default model**, excellent balance of quality and cost
+- `gpt-5.2-pro-2025-12-11` - Premium tier for complex reviews (no structured outputs - uses JSON extraction)
 - `gpt-5.1-codex` - Optimized for code review
 - `gpt-5.1-codex-mini` - Cost-effective variant
-- `gpt-5-pro` - Premium tier with extended reasoning
+- `gpt-5.1` - Enhanced reasoning model
 
-**Key Difference**: GPT-5.1 models use `src/chat.ts:codeReviewWithResponsesAPI()` which supports:
+### Chat Completions API Models (Legacy)
+
+- `gpt-4o`, `gpt-4o-mini`
+- `gpt-3.5-turbo`
+
+**Key Difference**: GPT-5.1+ models use `src/chat.ts:codeReviewWithResponsesAPI()` which supports:
 
 - Chain of thought (CoT) passing
 - Reasoning effort control (`REASONING_EFFORT`: none/minimal/low/medium/high)
-- Structured output schema (instead of `response_format`)
+- Structured output schema (GPT-5.2-Pro uses JSON extraction fallback)
 
 ## Environment Variables
 
@@ -115,7 +116,7 @@ Requires `.env` file with configuration (see `.env.example`)
 
 ### Optional
 
-- `MODEL` - Model name (default: `gpt-4o-mini`)
+- `MODEL` - Model name (default: `gpt-5.2-2025-12-11`)
 - `LANGUAGE` - Review language (e.g., "Chinese", "English")
 - `PROMPT` - Custom review prompt
 - `temperature` - Sampling temperature (Chat Completions only)
