@@ -8,7 +8,7 @@
 
 ## 快速开始
 
-### 方式一：安装 GitHub App（推荐）
+### 安装 GitHub App（推荐）
 
 最简单的方式 - 安装我们的 GitHub App，它会自动审查 PR。
 
@@ -16,11 +16,19 @@
 
 2. **选择仓库** 启用代码审查
 
-3. **完成！** 机器人会自动审查新的 Pull Request
+3. **配置 OpenAI API 密钥**：
+   - 进入仓库 **Settings** → **Secrets and variables** → **Actions**
+   - 点击 **Variables** 标签
+   - 点击 **New repository variable**
+   - 名称：`OPENAI_API_KEY`
+   - 值：从 [platform.openai.com](https://platform.openai.com/api-keys) 获取的 API 密钥
+
+4. **完成！** 机器人会自动审查新的 Pull Request
 
 审查结果会带有 GPT-5.2 品牌标识和头像。
 
-### 方式二：GitHub Actions
+<details>
+<summary><strong>方式二：GitHub Actions（自托管）</strong></summary>
 
 在你自己的工作流中运行，使用你自己的 OpenAI API 密钥。
 
@@ -51,6 +59,8 @@ jobs:
           LANGUAGE: Chinese
 ```
 
+</details>
+
 ## 配置选项
 
 | 变量 | 描述 | 默认值 |
@@ -75,7 +85,8 @@ jobs:
 | `gpt-5.1` | 通用型 |
 | `gpt-4o`, `gpt-4o-mini` | 上一代 |
 
-## 自托管
+<details>
+<summary><strong>自托管</strong></summary>
 
 用于 webhook 驱动的部署（而非 GitHub Actions）：
 
@@ -98,7 +109,10 @@ docker build -t gpt-code-review .
 docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
 ```
 
-## 开发
+</details>
+
+<details>
+<summary><strong>开发</strong></summary>
 
 ```sh
 # 安装依赖
@@ -113,6 +127,8 @@ yarn test
 # 本地启动
 yarn start
 ```
+
+</details>
 
 ## 贡献
 

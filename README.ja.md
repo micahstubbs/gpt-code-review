@@ -8,7 +8,7 @@
 
 ## クイックスタート
 
-### 方法 1: GitHub App をインストール（推奨）
+### GitHub App をインストール（推奨）
 
 最も簡単な方法 - GitHub App をインストールすると、自動的に PR をレビューします。
 
@@ -16,11 +16,19 @@
 
 2. **リポジトリを選択** してコードレビューを有効化
 
-3. **完了！** ボットが自動的に新しい Pull Request をレビューします
+3. **OpenAI API キーを設定**：
+   - リポジトリの **Settings** → **Secrets and variables** → **Actions** に移動
+   - **Variables** タブをクリック
+   - **New repository variable** をクリック
+   - 名前：`OPENAI_API_KEY`
+   - 値：[platform.openai.com](https://platform.openai.com/api-keys) から取得した API キー
+
+4. **完了！** ボットが自動的に新しい Pull Request をレビューします
 
 レビューは GPT-5.2 のブランディングとアバターで表示されます。
 
-### 方法 2: GitHub Actions
+<details>
+<summary><strong>方法 2: GitHub Actions（セルフホスト）</strong></summary>
 
 自分のワークフローで自分の OpenAI API キーを使用して実行します。
 
@@ -51,6 +59,8 @@ jobs:
           LANGUAGE: Japanese
 ```
 
+</details>
+
 ## 設定オプション
 
 | 変数 | 説明 | デフォルト |
@@ -75,7 +85,8 @@ jobs:
 | `gpt-5.1` | 汎用 |
 | `gpt-4o`, `gpt-4o-mini` | 前世代 |
 
-## セルフホスティング
+<details>
+<summary><strong>セルフホスティング</strong></summary>
 
 webhook ベースのデプロイ（GitHub Actions の代わり）：
 
@@ -98,7 +109,10 @@ docker build -t gpt-code-review .
 docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
 ```
 
-## 開発
+</details>
+
+<details>
+<summary><strong>開発</strong></summary>
 
 ```sh
 # 依存関係をインストール
@@ -113,6 +127,8 @@ yarn test
 # ローカルで起動
 yarn start
 ```
+
+</details>
 
 ## 貢献
 

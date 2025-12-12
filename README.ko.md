@@ -8,7 +8,7 @@
 
 ## 빠른 시작
 
-### 방법 1: GitHub App 설치 (권장)
+### GitHub App 설치 (권장)
 
 가장 쉬운 방법 - GitHub App을 설치하면 자동으로 PR을 리뷰합니다.
 
@@ -16,11 +16,19 @@
 
 2. **저장소 선택** 코드 리뷰를 활성화할 저장소 선택
 
-3. **완료!** 봇이 자동으로 새 Pull Request를 리뷰합니다
+3. **OpenAI API 키 설정**:
+   - 저장소 **Settings** → **Secrets and variables** → **Actions** 이동
+   - **Variables** 탭 클릭
+   - **New repository variable** 클릭
+   - 이름: `OPENAI_API_KEY`
+   - 값: [platform.openai.com](https://platform.openai.com/api-keys)에서 받은 API 키
+
+4. **완료!** 봇이 자동으로 새 Pull Request를 리뷰합니다
 
 리뷰는 GPT-5.2 브랜딩과 아바타와 함께 표시됩니다.
 
-### 방법 2: GitHub Actions
+<details>
+<summary><strong>방법 2: GitHub Actions (자체 호스팅)</strong></summary>
 
 자체 워크플로우에서 자신의 OpenAI API 키로 실행합니다.
 
@@ -51,6 +59,8 @@ jobs:
           LANGUAGE: Korean
 ```
 
+</details>
+
 ## 설정 옵션
 
 | 변수 | 설명 | 기본값 |
@@ -75,7 +85,8 @@ jobs:
 | `gpt-5.1` | 범용 |
 | `gpt-4o`, `gpt-4o-mini` | 이전 세대 |
 
-## 셀프 호스팅
+<details>
+<summary><strong>셀프 호스팅</strong></summary>
 
 webhook 기반 배포 (GitHub Actions 대신):
 
@@ -98,7 +109,10 @@ docker build -t gpt-code-review .
 docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
 ```
 
-## 개발
+</details>
+
+<details>
+<summary><strong>개발</strong></summary>
 
 ```sh
 # 종속성 설치
@@ -113,6 +127,8 @@ yarn test
 # 로컬 시작
 yarn start
 ```
+
+</details>
 
 ## 기여하기
 
