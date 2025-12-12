@@ -27,7 +27,9 @@ export declare class Chat {
     private openai;
     private isAzure;
     private isGithubModels;
+    private model;
     constructor(apikey: string);
+    getModel(): string;
     private isReasoningModel;
     private supportsStructuredOutputs;
     private getValidVerbosity;
