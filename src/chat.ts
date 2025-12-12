@@ -141,8 +141,10 @@ export class Chat {
   private openai: OpenAI | AzureOpenAI;
   private isAzure: boolean;
   private isGithubModels: boolean;
+  private model: string;
 
   constructor(apikey: string) {
+    this.model = process.env.MODEL || 'gpt-5.2-2025-12-11';
     this.isAzure = Boolean(process.env.AZURE_API_VERSION && process.env.AZURE_DEPLOYMENT);
 
     this.isGithubModels = process.env.USE_GITHUB_MODELS === 'true';
@@ -164,6 +166,11 @@ export class Chat {
           : process.env.OPENAI_API_ENDPOINT || 'https://api.openai.com/v1',
       });
     }
+  }
+
+  // Get the model ID being used
+  public getModel(): string {
+    return this.model;
   }
 
   // Detect if model requires Responses API (GPT-5.1+ and GPT-5.2+ models)

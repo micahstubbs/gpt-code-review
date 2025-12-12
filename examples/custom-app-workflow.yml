@@ -1,0 +1,50 @@
+# Example: Code Review with Custom GitHub App
+#
+# This workflow uses a custom GitHub App for branded review comments.
+# Instead of "github-actions[bot]", reviews appear from your custom app
+# with your chosen name and avatar.
+#
+# Prerequisites:
+# 1. Create a GitHub App (see docs/custom-github-app-setup.md)
+# 2. Store APP_ID as repository variable: CODE_REVIEW_APP_ID
+# 3. Store private key as repository secret: CODE_REVIEW_APP_PRIVATE_KEY
+# 4. Store OpenAI API key as repository secret: OPENAI_API_KEY
+
+name: Code Review (Custom App)
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Generate installation token from your custom GitHub App
+      # This authenticates as your app and creates a short-lived token
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CODE_REVIEW_APP_ID }}
+          private-key: ${{ secrets.CODE_REVIEW_APP_PRIVATE_KEY }}
+
+      # Step 2: Run code review using the custom app token
+      # Reviews will appear with your app's name and avatar
+      - name: GPT Code Review
+        uses: micahstubbs/gpt-code-review@main
+        env:
+          # Use the custom app token instead of GITHUB_TOKEN
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+          # OpenAI configuration
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: gpt-5.2-2025-12-11
+
+          # Optional: Customize review behavior
+          # LANGUAGE: English
+          # MAX_PATCH_LENGTH: 10000
+          # IGNORE_PATTERNS: "*.md,*.json,node_modules/**"
