@@ -45,12 +45,12 @@ jobs:
       - name: Build action
         run: yarn build
 
-      - name: Run code review with GPT-5.1 Codex
+      - name: Run code review with GPT-5.2
         uses: ./
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          MODEL: gpt-5.1-codex
+          MODEL: gpt-5.2-2025-12-11
           LANGUAGE: English
           REASONING_EFFORT: medium
           VERBOSITY: medium

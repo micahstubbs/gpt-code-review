@@ -1,6 +1,6 @@
 # Custom GitHub App Setup Guide
 
-This guide walks you through creating a custom GitHub App for branded code review comments. Instead of reviews appearing from "github-actions[bot]", they'll show your custom app name and avatar.
+This guide walks you through creating a custom GitHub App for branded code review comments. Instead of reviews appearing from "github-actions[bot]", they'll show your custom app name and avatar (e.g., "GPT-5.2" with a custom logo).
 
 ## Why Use a Custom GitHub App?
 
