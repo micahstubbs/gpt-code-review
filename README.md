@@ -95,6 +95,12 @@ jobs:
           INCLUDE_PATTERNS: *.js,*.ts # glob pattern or regex pattern to include files, separated by comma
 ```
 
+## Custom Bot Identity
+
+By default, review comments appear from "github-actions[bot]". To use a custom name and avatar, you can create your own GitHub App.
+
+See the [Custom GitHub App Setup Guide](docs/custom-github-app-setup.md) for step-by-step instructions, or use the [example workflow](examples/custom-app-workflow.yml).
+
 ## Self-hosting
 
 1. clone code
