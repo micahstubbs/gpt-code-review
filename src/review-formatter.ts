@@ -4,7 +4,7 @@
  */
 
 export interface ReviewIssue {
-  severity: 'critical' | 'warning' | 'style' | 'suggestion';
+  severity: string;
   message: string;
 }
 

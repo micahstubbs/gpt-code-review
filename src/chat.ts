@@ -1,5 +1,6 @@
 import { OpenAI, AzureOpenAI } from 'openai';
 import log from './log.js';
+import { formatReviewComment } from './review-formatter.js';
 
 /**
  * Expected structure for code review response
@@ -335,11 +336,13 @@ export class Chat {
           if (textContent && textContent.text) {
             try {
               const parsed = JSON.parse(textContent.text);
+              const issues = parsed.issues || [];
+              const details = parsed.details || '';
               return {
                 lgtm: parsed.lgtm || false,
-                review_comment: parsed.review_comment || '',
-                issues: parsed.issues || [],
-                details: parsed.details || '',
+                review_comment: formatReviewComment({ issues, details }),
+                issues,
+                details,
               };
             } catch (parseError) {
               // JSON parse failed
@@ -352,17 +355,19 @@ export class Chat {
       if (res.output_text) {
         try {
           const parsed = JSON.parse(res.output_text);
+          const issues = parsed.issues || [];
+          const details = parsed.details || '';
           return {
             lgtm: parsed.lgtm || false,
-            review_comment: parsed.review_comment || '',
-            issues: parsed.issues || [],
-            details: parsed.details || '',
+            review_comment: formatReviewComment({ issues, details }),
+            issues,
+            details,
           };
         } catch (parseError) {
-          // JSON parse failed, return as-is
+          // JSON parse failed, return as-is with raw text in details
           return {
             lgtm: false,
-            review_comment: res.output_text,
+            review_comment: formatReviewComment({ issues: [], details: res.output_text }),
             issues: [],
             details: res.output_text,
           };
@@ -473,14 +478,18 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
 
       if (extracted) {
         log.debug('Successfully extracted JSON from response');
-        return normalizeCodeReviewResponse(extracted);
+        const normalized = normalizeCodeReviewResponse(extracted);
+        return {
+          ...normalized,
+          review_comment: formatReviewComment({ issues: normalized.issues, details: normalized.details }),
+        };
       }
 
       // If JSON extraction failed, return the raw text as the review
       log.warn('Failed to extract JSON from response, using raw text');
       return {
         lgtm: false,
-        review_comment: responseText.substring(0, 500),
+        review_comment: formatReviewComment({ issues: [], details: responseText }),
         issues: [],
         details: responseText,
       };
@@ -529,18 +538,21 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
       try {
         const json = JSON.parse(res.choices[0].message.content || '');
         // Ensure issues and details exist with defaults
+        const issues = json.issues || [];
+        const details = json.details || json.review_comment || '';
         return {
           lgtm: json.lgtm || false,
-          review_comment: json.review_comment || '',
-          issues: json.issues || [],
-          details: json.details || json.review_comment || '',
+          review_comment: formatReviewComment({ issues, details }),
+          issues,
+          details,
         };
       } catch (e) {
+        const rawContent = res.choices[0].message.content || '';
         return {
           lgtm: false,
-          review_comment: res.choices[0].message.content || '',
+          review_comment: formatReviewComment({ issues: [], details: rawContent }),
           issues: [],
-          details: res.choices[0].message.content || '',
+          details: rawContent,
         };
       }
     }
