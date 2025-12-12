@@ -345,7 +345,7 @@ export class Chat {
               const details = parsed.details || parsed.review_comment || '';
               return {
                 lgtm: parsed.lgtm || false,
-                review_comment: formatReviewComment({ issues, details }),
+                review_comment: formatReviewComment({ issues, details, model }),
                 issues,
                 details,
               };
@@ -364,7 +364,7 @@ export class Chat {
           const details = parsed.details || parsed.review_comment || '';
           return {
             lgtm: parsed.lgtm || false,
-            review_comment: formatReviewComment({ issues, details }),
+            review_comment: formatReviewComment({ issues, details, model }),
             issues,
             details,
           };
@@ -372,7 +372,7 @@ export class Chat {
           // JSON parse failed, return as-is with raw text in details
           return {
             lgtm: false,
-            review_comment: formatReviewComment({ issues: [], details: res.output_text }),
+            review_comment: formatReviewComment({ issues: [], details: res.output_text, model }),
             issues: [],
             details: res.output_text,
           };
@@ -486,7 +486,7 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
         const normalized = normalizeCodeReviewResponse(extracted);
         return {
           ...normalized,
-          review_comment: formatReviewComment({ issues: normalized.issues, details: normalized.details }),
+          review_comment: formatReviewComment({ issues: normalized.issues, details: normalized.details, model }),
         };
       }
 
@@ -494,7 +494,7 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
       log.warn('Failed to extract JSON from response, using raw text');
       return {
         lgtm: false,
-        review_comment: formatReviewComment({ issues: [], details: responseText }),
+        review_comment: formatReviewComment({ issues: [], details: responseText, model }),
         issues: [],
         details: responseText,
       };
@@ -547,7 +547,7 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
         const details = json.details || json.review_comment || '';
         return {
           lgtm: json.lgtm || false,
-          review_comment: formatReviewComment({ issues, details }),
+          review_comment: formatReviewComment({ issues, details, model }),
           issues,
           details,
         };
@@ -555,7 +555,7 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
         const rawContent = res.choices[0].message.content || '';
         return {
           lgtm: false,
-          review_comment: formatReviewComment({ issues: [], details: rawContent }),
+          review_comment: formatReviewComment({ issues: [], details: rawContent, model }),
           issues: [],
           details: rawContent,
         };

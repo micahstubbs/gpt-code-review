@@ -13,10 +13,11 @@ export interface ReviewIssue {
 export interface ReviewData {
   issues: ReviewIssue[];
   details: string;
+  model?: string;
 }
 
 export function formatReviewComment(reviewData: ReviewData): string {
-  const { issues, details } = reviewData;
+  const { issues, details, model } = reviewData;
 
   // Build issue summary
   let summary = '## Code Review Summary\n\n### Issues Found\n';
@@ -36,6 +37,11 @@ export function formatReviewComment(reviewData: ReviewData): string {
   summary += '<summary>Detailed Analysis</summary>\n\n';
   summary += details;
   summary += '\n\n</details>';
+
+  // Add model identifier footer
+  if (model) {
+    summary += `\n\n---\n<sub>Reviewed by \`${model}\`</sub>`;
+  }
 
   return summary;
 }
