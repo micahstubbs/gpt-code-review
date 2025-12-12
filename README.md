@@ -8,7 +8,7 @@ Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md)
 
 ## Quick Start
 
-### Option 1: Install the GitHub App (Recommended)
+### Install the GitHub App (Recommended)
 
 The easiest way to get started - install our GitHub App and it will automatically review PRs.
 
@@ -16,11 +16,19 @@ The easiest way to get started - install our GitHub App and it will automaticall
 
 2. **Select repositories** to enable code review on
 
-3. **Done!** The bot will automatically review new Pull Requests
+3. **Configure your OpenAI API key**:
+   - Go to your repository **Settings** → **Secrets and variables** → **Actions**
+   - Click the **Variables** tab
+   - Click **New repository variable**
+   - Name: `OPENAI_API_KEY`
+   - Value: Your OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
+
+4. **Done!** The bot will automatically review new Pull Requests
 
 Reviews appear with the GPT-5.2 branding and avatar.
 
-### Option 2: GitHub Actions
+<details>
+<summary><strong>Option 2: GitHub Actions (Self-hosted)</strong></summary>
 
 Run as a GitHub Action in your own workflow with your own OpenAI API key.
 
@@ -50,6 +58,8 @@ jobs:
           MODEL: gpt-5.2-2025-12-11
 ```
 
+</details>
+
 ## Configuration Options
 
 | Variable | Description | Default |
@@ -74,7 +84,8 @@ jobs:
 | `gpt-5.1` | General purpose |
 | `gpt-4o`, `gpt-4o-mini` | Previous generation |
 
-### Alternative Providers
+<details>
+<summary><strong>Alternative Providers</strong></summary>
 
 **GitHub Models:**
 ```yml
@@ -93,7 +104,10 @@ env:
   OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
 ```
 
-## Self-hosting
+</details>
+
+<details>
+<summary><strong>Self-hosting</strong></summary>
 
 For webhook-based deployment (instead of GitHub Actions):
 
@@ -116,7 +130,10 @@ docker build -t gpt-code-review .
 docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
 ```
 
-## Development
+</details>
+
+<details>
+<summary><strong>Development</strong></summary>
 
 ```sh
 # Install dependencies
@@ -131,6 +148,8 @@ yarn test
 # Start locally
 yarn start
 ```
+
+</details>
 
 ## Contributing
 
