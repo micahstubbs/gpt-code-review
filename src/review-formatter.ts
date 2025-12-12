@@ -3,8 +3,10 @@
  * and collapsible details sections
  */
 
+export type Severity = 'critical' | 'warning' | 'style' | 'suggestion';
+
 export interface ReviewIssue {
-  severity: string;
+  severity: Severity;
   message: string;
 }
 

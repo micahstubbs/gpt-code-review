@@ -1,6 +1,6 @@
 import { OpenAI, AzureOpenAI } from 'openai';
 import log from './log.js';
-import { formatReviewComment } from './review-formatter.js';
+import { formatReviewComment, Severity } from './review-formatter.js';
 
 /**
  * Expected structure for code review response
@@ -8,7 +8,7 @@ import { formatReviewComment } from './review-formatter.js';
 interface CodeReviewResponse {
   lgtm: boolean;
   review_comment: string;
-  issues: Array<{ severity: string; message: string }>;
+  issues: Array<{ severity: Severity; message: string }>;
   details: string;
 }
 
@@ -107,12 +107,17 @@ export function isValidCodeReviewResponse(obj: unknown): obj is CodeReviewRespon
   }
 
   // Validate each issue has required structure
+  const validSeverities = ['critical', 'warning', 'style', 'suggestion'];
   for (const issue of response.issues) {
     if (!issue || typeof issue !== 'object') {
       return false;
     }
     const issueObj = issue as Record<string, unknown>;
     if (typeof issueObj.severity !== 'string' || typeof issueObj.message !== 'string') {
+      return false;
+    }
+    // Validate severity is one of the expected values
+    if (!validSeverities.includes(issueObj.severity.toLowerCase())) {
       return false;
     }
   }
@@ -337,7 +342,7 @@ export class Chat {
             try {
               const parsed = JSON.parse(textContent.text);
               const issues = parsed.issues || [];
-              const details = parsed.details || '';
+              const details = parsed.details || parsed.review_comment || '';
               return {
                 lgtm: parsed.lgtm || false,
                 review_comment: formatReviewComment({ issues, details }),
@@ -356,7 +361,7 @@ export class Chat {
         try {
           const parsed = JSON.parse(res.output_text);
           const issues = parsed.issues || [];
-          const details = parsed.details || '';
+          const details = parsed.details || parsed.review_comment || '';
           return {
             lgtm: parsed.lgtm || false,
             review_comment: formatReviewComment({ issues, details }),
