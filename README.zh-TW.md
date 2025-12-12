@@ -1,44 +1,32 @@
 # GPT 5.x PR Reviewer
 
-> 使用 GPT-5.1、GPT-5.1-Codex、GPT-5-Pro 和 GPT-4o 的 AI 程式碼審查工具
+> 使用 GPT-5.2、GPT-5.2-Pro、GPT-5.1 和 GPT-4o 的 AI 程式碼審查工具
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
-翻譯版本：[English](./README.md) | [簡體中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
+翻譯版本：[英語](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
-## 機器人使用方式
+## 快速開始
 
-❗️⚠️ `由於成本考量，BOT 目前僅用於測試目的，並部署在有限制的 AWS Lambda 上。因此，不穩定的情況是完全正常的。建議自行部署 app。`
+### 方式一：安裝 GitHub App（推薦）
 
-### 安裝
+最簡單的方式 - 安裝我們的 GitHub App，它會自動審查 PR。
 
-安裝：[GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
+1. **安裝應用**：[GPT-5.2 PR Review](https://github.com/apps/gpt-5-2-pr-review)
 
-### 設定
+2. **選擇倉庫** 啟用程式碼審查
 
-1. 轉到你要整合此機器人的倉庫首頁
-2. 點選 `settings`
-3. 點選 `actions` 在下面的 `secrets and variables`
-4. 切換到 `Variables` 選項，建立一個新變數 `OPENAI_API_KEY`，值為你的 open api key (如果是 Github Action 整合，則設定在 secrets 中)
-   <img width="1465" alt="image" src="https://user-images.githubusercontent.com/13167934/218533628-3974b70f-c423-44b0-b096-d1ec2ace85ea.png">
+3. **完成！** 機器人會自動審查新的 Pull Request
 
-### 開始使用
+審查結果會帶有 GPT-5.2 品牌標識和頭像。
 
-1. 當你建立一個新的 Pull request 時，機器人會自動進行程式碼審查，審查訊息將顯示在 pr timeline / file changes 部分。
-2. 在 `git push` 更新 Pull request 之後，cr bot 將重新審查更改的文件
+### 方式二：GitHub Actions
 
-範例：
+在你自己的工作流程中運行，使用你自己的 OpenAI API 密鑰。
 
-[ChatGPT-CodeReview/pull/21](https://github.com/anc95/ChatGPT-CodeReview/pull/21)
+1. 將 `OPENAI_API_KEY` 添加到你的倉庫密鑰
 
-<img width="1052" alt="image" src="https://user-images.githubusercontent.com/13167934/218999459-812206e1-d8d2-4900-8ce8-19b5b6e1f5cb.png">
-
-## 使用 Github Actions
-
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
-
-1. 新增 `OPENAI_API_KEY` 到你的 github actions secrets
-2. 建立 `.github/workflows/cr.yml` 新增以下內容
+2. 創建 `.github/workflows/cr.yml`：
 
 ```yml
 name: Code Review
@@ -52,75 +40,90 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
-  test:
+  review:
     runs-on: ubuntu-latest
     steps:
-      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
+      - uses: micahstubbs/gpt-code-review@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          MODEL: gpt-5.1-codex # 推薦使用
-          # 支援的模型: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
+          MODEL: gpt-5.2-2025-12-11
           LANGUAGE: Chinese
-          OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          PROMPT:
-          top_p: 1
-          temperature: 1
-          max_tokens: 10000
-          MAX_PATCH_LENGTH: 10000
-          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
-## 自我託管
+## 配置選項
 
-1. 複製程式碼
-2. 複製 `.env.example` 到 `.env`, 並填寫環境變數
-3. 安裝相依性並執行
+| 變數 | 描述 | 預設值 |
+|------|------|--------|
+| `MODEL` | 使用的 OpenAI 模型 | `gpt-5.2-2025-12-11` |
+| `LANGUAGE` | 回應語言 | English |
+| `PROMPT` | 自訂審查提示 | （內建） |
+| `MAX_PATCH_LENGTH` | 跳過較大差異的檔案 | 無限制 |
+| `IGNORE_PATTERNS` | 忽略的 glob 模式 | 無 |
+| `INCLUDE_PATTERNS` | 包含的 glob 模式 | 全部 |
+| `REASONING_EFFORT` | GPT-5.x 推理級別 | medium |
+| `VERBOSITY` | 回應詳細程度 | medium |
+
+### 支援的模型
+
+| 模型 | 描述 |
+|------|------|
+| `gpt-5.2-2025-12-11` | 推薦 - 品質和成本的最佳平衡 |
+| `gpt-5.2-pro-2025-12-11` | 高級版，用於複雜/關鍵審查 |
+| `gpt-5.1-codex` | 針對程式碼審查優化 |
+| `gpt-5.1-codex-mini` | 經濟實惠選項 |
+| `gpt-5.1` | 通用型 |
+| `gpt-4o`, `gpt-4o-mini` | 上一代 |
+
+## 自託管
+
+用於 webhook 驅動的部署（而非 GitHub Actions）：
+
+1. 克隆倉庫
+2. 複製 `.env.example` 到 `.env` 並配置
+3. 安裝並運行：
 
 ```sh
-npm i
-npm i -g pm2
-npm run build
+yarn install
+yarn build
 pm2 start pm2.config.cjs
 ```
 
-[probot](https://probot.github.io/docs/development/) 了解更多詳情
-
-## 開發
-
-### 設定
-
-```sh
-# Install dependencies
-npm install
-
-# Build code
-npm run build
-
-# Run the bot
-npm run start
-```
+詳情請參閱 [Probot 文檔](https://probot.github.io/docs/development/)。
 
 ### Docker
 
 ```sh
-# 1. Build container
-docker build -t cr-bot .
+docker build -t gpt-code-review .
+docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
+```
 
-# 2. Start container
-docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> cr-bot
+## 開發
+
+```sh
+# 安裝依賴
+yarn install
+
+# 構建
+yarn build
+
+# 運行測試
+yarn test
+
+# 本地啟動
+yarn start
 ```
 
 ## 貢獻
 
-如果您對如何改進 cr-bot 有建議，或者想報告錯誤，請開啟一個問題！我們喜歡所有的貢獻。
+如果你有改進建議或想報告 bug，請[提交 issue](https://github.com/micahstubbs/gpt-code-review/issues)。
 
-有關更多信息，請查看[貢獻指南](CONTRIBUTING.md).
+更多資訊請查看[貢獻指南](CONTRIBUTING.md)。
 
-## 靈感
+## 致謝
 
-這個項目的靈感來自[codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)
+本專案靈感來自 [codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)
 
-## License
+## 授權
 
 [ISC](LICENSE) © 2025 anc95, micahstubbs, and contributors

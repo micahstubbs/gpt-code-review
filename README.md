@@ -8,59 +8,21 @@ Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md)
 
 ## Quick Start
 
-### Option 1: Custom GitHub App (Recommended)
+### Option 1: Install the GitHub App (Recommended)
 
-Use a custom GitHub App for branded reviews with your own name and avatar.
+The easiest way to get started - install our GitHub App and it will automatically review PRs.
 
-**Setup:**
+1. **Install the App**: [GPT-5.2 PR Review](https://github.com/apps/gpt-5-2-pr-review)
 
-1. [Create a GitHub App](https://github.com/settings/apps/new) with:
-   - **Permissions**: Contents (Read), Pull requests (Write)
-   - **Webhook**: Disabled (not needed for Actions)
+2. **Select repositories** to enable code review on
 
-2. Generate and download a private key from your app settings
+3. **Done!** The bot will automatically review new Pull Requests
 
-3. Add secrets to your repository:
-   - `CODE_REVIEW_APP_ID` (as variable)
-   - `CODE_REVIEW_APP_PRIVATE_KEY` (as secret)
-   - `OPENAI_API_KEY` (as secret)
+Reviews appear with the GPT-5.2 branding and avatar.
 
-4. Create `.github/workflows/cr.yml`:
+### Option 2: GitHub Actions
 
-```yml
-name: Code Review
-
-permissions:
-  contents: read
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate App Token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.CODE_REVIEW_APP_ID }}
-          private-key: ${{ secrets.CODE_REVIEW_APP_PRIVATE_KEY }}
-
-      - name: GPT Code Review
-        uses: micahstubbs/gpt-code-review@v3
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          MODEL: gpt-5.2-2025-12-11
-```
-
-See the [Custom GitHub App Setup Guide](docs/custom-github-app-setup.md) for detailed instructions.
-
-### Option 2: Default GitHub Actions Bot
-
-Use the default `github-actions[bot]` identity (simpler setup).
+Run as a GitHub Action in your own workflow with your own OpenAI API key.
 
 1. Add `OPENAI_API_KEY` to your repository secrets
 

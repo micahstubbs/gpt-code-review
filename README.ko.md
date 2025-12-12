@@ -1,44 +1,32 @@
 # GPT 5.x PR Reviewer
 
-> GPT-5.1, GPT-5.1-Codex, GPT-5-Pro, GPT-4o를 사용한 AI 코드 리뷰 도구
+> GPT-5.2, GPT-5.2-Pro, GPT-5.1, GPT-4o를 사용한 AI 코드 리뷰 도구
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
-Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
+번역 버전: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
-## 사용법
+## 빠른 시작
 
-❗️⚠️비용을 고려하여 BOT은 테스트 목적으로만 사용되며, 현재 AWS Lambda에 배포되어 속도 제한을 받고 있습니다. 따라서 불안정한 상황은 완전히 정상적입니다. 응용 프로그램을 직접 배포하는 것이 좋습니다.
+### 방법 1: GitHub App 설치 (권장)
 
-### 설치
+가장 쉬운 방법 - GitHub App을 설치하면 자동으로 PR을 리뷰합니다.
 
-설치: [GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
+1. **앱 설치**: [GPT-5.2 PR Review](https://github.com/apps/gpt-5-2-pr-review)
 
-### 설정
+2. **저장소 선택** 코드 리뷰를 활성화할 저장소 선택
 
-1. cr bot을 적용할 레포지토리 홈페이지로 이동합니다.
-2. `settings` 클릭
-3. `secrets and variables` 메뉴 밑의 `actions` 를 클릭
-4. `Variables` 탭으로 변경합니다, `New repository variable` 버튼을 눌러서 새로운 `OPENAI_API_KEY` 변수를 생성합니다. 변수의 값으로 당신의 open api key 를 입력합니다. (OpenAI 홈페이지에서 api 키를 받을 수 있습니다.)
-   <img width="1465" alt="image" src="https://user-images.githubusercontent.com/13167934/218533628-3974b70f-c423-44b0-b096-d1ec2ace85ea.png">
+3. **완료!** 봇이 자동으로 새 Pull Request를 리뷰합니다
 
-### 사용 시작하기
+리뷰는 GPT-5.2 브랜딩과 아바타와 함께 표시됩니다.
 
-1. 새로운 Pull request를 생성하면 로봇이 자동으로 코드 리뷰를 수행하며, 리뷰 정보는 Pull request 타임라인 / 파일 변경 부분에 표시됩니다.
-2. `git push` 이후에 Pull request를 업데이트하면, cr bot은 변경된 파일을 다시 검토합니다.
+### 방법 2: GitHub Actions
 
-예시:
+자체 워크플로우에서 자신의 OpenAI API 키로 실행합니다.
 
-[ChatGPT-CodeReview/pull/21](https://github.com/anc95/ChatGPT-CodeReview/pull/21)
+1. `OPENAI_API_KEY`를 저장소 시크릿에 추가
 
-<img width="1052" alt="image" src="https://user-images.githubusercontent.com/13167934/218999459-812206e1-d8d2-4900-8ce8-19b5b6e1f5cb.png">
-
-### Github Actions 사용하기
-
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
-
-1. `OPENAI_API_KEY` 를 당신의 github actions secrets 에 추가합니다.
-2. `.github/workflows/cr.yml` 를 생성하고, 아래의 내용을 추가합니다.
+2. `.github/workflows/cr.yml` 생성:
 
 ```yml
 name: Code Review
@@ -52,67 +40,90 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
-  test:
+  review:
     runs-on: ubuntu-latest
     steps:
-      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
+      - uses: micahstubbs/gpt-code-review@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          MODEL: gpt-5.1-codex # 권장
-          # 지원 모델: gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1, gpt-5-pro, gpt-4o
+          MODEL: gpt-5.2-2025-12-11
           LANGUAGE: Korean
-          PROMPT:
-          IGNORE_PATTERNS: /node_modules,*.md
 ```
 
-## Self-hosting
+## 설정 옵션
 
-1. 코드를 clone 합니다.
-2. `.env.example` 을 `.env`로 복제하고, 환경변수(env variable)을 입력합니다.
-3. 종속성(deps)들을 설치하고 실행합니다.
+| 변수 | 설명 | 기본값 |
+|------|------|--------|
+| `MODEL` | 사용할 OpenAI 모델 | `gpt-5.2-2025-12-11` |
+| `LANGUAGE` | 응답 언어 | English |
+| `PROMPT` | 사용자 정의 리뷰 프롬프트 | (내장) |
+| `MAX_PATCH_LENGTH` | 큰 diff 파일 건너뛰기 | 무제한 |
+| `IGNORE_PATTERNS` | 무시할 glob 패턴 | 없음 |
+| `INCLUDE_PATTERNS` | 포함할 glob 패턴 | 전체 |
+| `REASONING_EFFORT` | GPT-5.x 추론 수준 | medium |
+| `VERBOSITY` | 응답 상세 수준 | medium |
+
+### 지원 모델
+
+| 모델 | 설명 |
+|------|------|
+| `gpt-5.2-2025-12-11` | 권장 - 품질과 비용의 최적 균형 |
+| `gpt-5.2-pro-2025-12-11` | 프리미엄 - 복잡/중요 리뷰용 |
+| `gpt-5.1-codex` | 코드 리뷰에 최적화 |
+| `gpt-5.1-codex-mini` | 비용 효율적 옵션 |
+| `gpt-5.1` | 범용 |
+| `gpt-4o`, `gpt-4o-mini` | 이전 세대 |
+
+## 셀프 호스팅
+
+webhook 기반 배포 (GitHub Actions 대신):
+
+1. 저장소 클론
+2. `.env.example`을 `.env`로 복사하고 설정
+3. 설치 및 실행:
 
 ```sh
-npm i
-npm -i g pm2
-npm run build
+yarn install
+yarn build
 pm2 start pm2.config.cjs
 ```
 
-[probot](https://probot.github.io/docs/development/) 더 자세한 정보
-
-## Dev
-
-### 설정
-
-```sh
-# 종속성 설치
-npm install
-
-# 봇 실행
-npm start
-```
+자세한 내용은 [Probot 문서](https://probot.github.io/docs/development/)를 참조하세요.
 
 ### Docker
 
 ```sh
-# 1. 컨테이너 빌드
-docker build -t cr-bot .
+docker build -t gpt-code-review .
+docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
+```
 
-# 2. 컨테이너 시작
-docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> cr-bot
+## 개발
+
+```sh
+# 종속성 설치
+yarn install
+
+# 빌드
+yarn build
+
+# 테스트 실행
+yarn test
+
+# 로컬 시작
+yarn start
 ```
 
 ## 기여하기
 
-만약 당신이 cr-bot의 개선 제안이나 버그 신고가 있으면 issue를 열어주세요! 모든 당신의 기여를 환영합니다.
+제안이나 버그 신고가 있으면 [이슈를 열어주세요](https://github.com/micahstubbs/gpt-code-review/issues).
 
 자세한 내용은 [기여 가이드](CONTRIBUTING.md)를 확인하세요.
 
-## Credit
+## 크레딧
 
-이 프로젝트는 [codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)에서 영감을 얻었습니다.
+이 프로젝트는 [codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)에서 영감을 받았습니다.
 
-## License
+## 라이선스
 
 [ISC](LICENSE) © 2025 anc95, micahstubbs, and contributors
