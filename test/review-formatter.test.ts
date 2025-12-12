@@ -20,7 +20,6 @@ describe('review-formatter', () => {
 
       const formatted = formatReviewComment(reviewData);
 
-      expect(formatted).toContain('## Code Review Summary');
       expect(formatted).toContain('### Issues Found');
       expect(formatted).toContain('**Critical**:');
       expect(formatted).toContain('Potential SQL injection');

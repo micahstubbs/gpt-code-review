@@ -19,8 +19,8 @@ export interface ReviewData {
 export function formatReviewComment(reviewData: ReviewData): string {
   const { issues, details, model } = reviewData;
 
-  // Build issue summary
-  let summary = '## Code Review Summary\n\n### Issues Found\n';
+  // Build issue summary - start directly with Issues Found
+  let summary = '### Issues Found\n';
 
   if (issues.length === 0) {
     summary += 'No issues found ✓\n\n';
@@ -38,9 +38,9 @@ export function formatReviewComment(reviewData: ReviewData): string {
   summary += details;
   summary += '\n\n</details>';
 
-  // Add model identifier footer
+  // Add model identifier footer (no horizontal rule)
   if (model) {
-    summary += `\n\n---\n<sub>Reviewed by \`${model}\`</sub>`;
+    summary += `\n\n<sub>Reviewed by \`${model}\`</sub>`;
   }
 
   return summary;
