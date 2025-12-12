@@ -1,5 +1,141 @@
 import { OpenAI, AzureOpenAI } from 'openai';
 import log from './log.js';
+import { formatReviewComment, Severity } from './review-formatter.js';
+
+/**
+ * Expected structure for code review response
+ */
+interface CodeReviewResponse {
+  lgtm: boolean;
+  review_comment: string;
+  issues: Array<{ severity: Severity; message: string }>;
+  details: string;
+}
+
+/**
+ * Extract and parse JSON from LLM response text.
+ * Handles common cases like markdown code blocks, conversational wrapping, and partial JSON.
+ *
+ * @param text - Raw text response from LLM
+ * @returns Parsed JSON object or null if extraction fails
+ */
+export function extractJsonFromText(text: string): CodeReviewResponse | null {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  // Strategy 1: Try direct JSON parse
+  try {
+    const parsed = JSON.parse(text.trim());
+    if (isValidCodeReviewResponse(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // Continue to other strategies
+  }
+
+  // Strategy 2: Extract from markdown code blocks (```json ... ``` or ``` ... ```)
+  // Check all code blocks to find the first valid JSON response
+  const codeBlockMatches = text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g);
+  for (const match of codeBlockMatches) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      if (isValidCodeReviewResponse(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Try next code block
+    }
+  }
+
+  // Strategy 3: Find JSON object boundaries ({ ... })
+  const jsonStart = text.indexOf('{');
+  const jsonEnd = text.lastIndexOf('}');
+  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+    try {
+      const jsonStr = text.substring(jsonStart, jsonEnd + 1);
+      const parsed = JSON.parse(jsonStr);
+      if (isValidCodeReviewResponse(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Continue to other strategies
+    }
+  }
+
+  // Strategy 4: Try to fix common JSON issues (trailing commas, single quotes)
+  const cleanedText = text
+    .replace(/,\s*}/g, '}') // Remove trailing commas before }
+    .replace(/,\s*]/g, ']') // Remove trailing commas before ]
+    .replace(/'/g, '"'); // Replace single quotes with double quotes
+
+  const cleanJsonStart = cleanedText.indexOf('{');
+  const cleanJsonEnd = cleanedText.lastIndexOf('}');
+  if (cleanJsonStart !== -1 && cleanJsonEnd !== -1 && cleanJsonEnd > cleanJsonStart) {
+    try {
+      const jsonStr = cleanedText.substring(cleanJsonStart, cleanJsonEnd + 1);
+      const parsed = JSON.parse(jsonStr);
+      if (isValidCodeReviewResponse(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // All strategies failed
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validate that an object has the expected CodeReviewResponse structure
+ */
+export function isValidCodeReviewResponse(obj: unknown): obj is CodeReviewResponse {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+
+  const response = obj as Record<string, unknown>;
+
+  // lgtm must be boolean
+  if (typeof response.lgtm !== 'boolean') {
+    return false;
+  }
+
+  // issues must be an array (can be empty)
+  if (!Array.isArray(response.issues)) {
+    return false;
+  }
+
+  // Validate each issue has required structure
+  const validSeverities = ['critical', 'warning', 'style', 'suggestion'];
+  for (const issue of response.issues) {
+    if (!issue || typeof issue !== 'object') {
+      return false;
+    }
+    const issueObj = issue as Record<string, unknown>;
+    if (typeof issueObj.severity !== 'string' || typeof issueObj.message !== 'string') {
+      return false;
+    }
+    // Validate severity is one of the expected values
+    if (!validSeverities.includes(issueObj.severity.toLowerCase())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Normalize a parsed response to ensure all fields exist with proper defaults
+ */
+function normalizeCodeReviewResponse(parsed: Partial<CodeReviewResponse>): CodeReviewResponse {
+  return {
+    lgtm: parsed.lgtm ?? false,
+    review_comment: parsed.review_comment ?? '',
+    issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+    details: parsed.details ?? parsed.review_comment ?? '',
+  };
+}
 
 export class Chat {
   private openai: OpenAI | AzureOpenAI;
@@ -30,10 +166,24 @@ export class Chat {
     }
   }
 
-  // Detect if model requires Responses API (GPT-5.1+ models)
+  // Detect if model requires Responses API (GPT-5.1+ and GPT-5.2+ models)
   private isReasoningModel(model: string): boolean {
-    const reasoningModels = ['gpt-5.1', 'gpt-5.1-codex', 'gpt-5.1-codex-mini', 'gpt-5-pro'];
+    const reasoningModels = [
+      'gpt-5.1',
+      'gpt-5.1-codex',
+      'gpt-5.1-codex-mini',
+      'gpt-5-pro',
+      'gpt-5.2',
+      'gpt-5.2-pro',
+    ];
     return reasoningModels.some((m) => model.includes(m));
+  }
+
+  // Detect if model supports structured outputs (JSON schema)
+  // GPT-5.2 Pro and some other models don't support structured outputs
+  private supportsStructuredOutputs(model: string): boolean {
+    const noStructuredOutputModels = ['gpt-5.2-pro'];
+    return !noStructuredOutputModels.some((m) => model.includes(m));
   }
 
   // Get valid verbosity for model (gpt-5.1-codex only supports 'medium')
@@ -191,11 +341,13 @@ export class Chat {
           if (textContent && textContent.text) {
             try {
               const parsed = JSON.parse(textContent.text);
+              const issues = parsed.issues || [];
+              const details = parsed.details || parsed.review_comment || '';
               return {
                 lgtm: parsed.lgtm || false,
-                review_comment: parsed.review_comment || '',
-                issues: parsed.issues || [],
-                details: parsed.details || '',
+                review_comment: formatReviewComment({ issues, details, model }),
+                issues,
+                details,
               };
             } catch (parseError) {
               // JSON parse failed
@@ -208,17 +360,19 @@ export class Chat {
       if (res.output_text) {
         try {
           const parsed = JSON.parse(res.output_text);
+          const issues = parsed.issues || [];
+          const details = parsed.details || parsed.review_comment || '';
           return {
             lgtm: parsed.lgtm || false,
-            review_comment: parsed.review_comment || '',
-            issues: parsed.issues || [],
-            details: parsed.details || '',
+            review_comment: formatReviewComment({ issues, details, model }),
+            issues,
+            details,
           };
         } catch (parseError) {
-          // JSON parse failed, return as-is
+          // JSON parse failed, return as-is with raw text in details
           return {
             lgtm: false,
-            review_comment: res.output_text,
+            review_comment: formatReviewComment({ issues: [], details: res.output_text, model }),
             issues: [],
             details: res.output_text,
           };
@@ -234,6 +388,118 @@ export class Chat {
       };
     } catch (e) {
       console.timeEnd('code-review-responses-api cost');
+      throw e;
+    }
+  }
+
+  // Code review using Responses API WITHOUT structured outputs (for models like GPT-5.2 Pro)
+  // Uses plain text format with JSON instructions in prompt, then extracts JSON from response
+  private async codeReviewWithResponsesAPINoSchema(
+    patch: string,
+    model: string
+  ): Promise<{ lgtm: boolean; review_comment: string; issues: any[]; details: string }> {
+    if (!patch) {
+      return {
+        lgtm: true,
+        review_comment: '',
+        issues: [],
+        details: '',
+      };
+    }
+
+    console.time('code-review-responses-api-no-schema cost');
+
+    const answerLanguage = process.env.LANGUAGE ? `Answer me in ${process.env.LANGUAGE}.` : '';
+
+    const basePrompt =
+      process.env.PROMPT ||
+      'Review the following code patch. Focus on potential bugs, risks, and improvements.';
+
+    // Add conciseness instruction and explicit JSON format requirement
+    const styleInstruction = ' Be concise. Prioritize clarity over perfect grammar.';
+
+    const jsonFormatInstruction = `
+
+IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdown, no explanation before or after):
+{
+  "lgtm": boolean,
+  "review_comment": "brief summary",
+  "issues": [{"severity": "critical|warning|style|suggestion", "message": "description"}],
+  "details": "detailed analysis"
+}`;
+
+    const prompt = `${basePrompt}${styleInstruction}${jsonFormatInstruction} ${answerLanguage}\n\nCode patch:\n${patch}`;
+
+    try {
+      const res = await this.openai.responses.create({
+        model: model,
+        input: prompt,
+        reasoning: {
+          effort: (process.env.REASONING_EFFORT as any) || 'medium',
+        },
+        text: {
+          verbosity: this.getValidVerbosity(model),
+          // No format specification - use plain text
+        },
+      });
+
+      console.timeEnd('code-review-responses-api-no-schema cost');
+
+      // Extract text from response
+      let responseText = '';
+
+      if (res.output && res.output.length > 0) {
+        const messageOutput = res.output.find((item: any) => item.type === 'message') as any;
+        if (
+          messageOutput &&
+          messageOutput.content &&
+          Array.isArray(messageOutput.content) &&
+          messageOutput.content.length > 0
+        ) {
+          const textContent = messageOutput.content.find((c: any) => c.type === 'text');
+          if (textContent && textContent.text) {
+            responseText = textContent.text;
+          }
+        }
+      }
+
+      // Fallback to output_text
+      if (!responseText && res.output_text) {
+        responseText = res.output_text;
+      }
+
+      if (!responseText) {
+        log.warn('No text content in Responses API response');
+        return {
+          lgtm: false,
+          review_comment: 'Error: No response from API',
+          issues: [],
+          details: 'Error: No response from API',
+        };
+      }
+
+      // Use robust JSON extraction
+      const extracted = extractJsonFromText(responseText);
+
+      if (extracted) {
+        log.debug('Successfully extracted JSON from response');
+        const normalized = normalizeCodeReviewResponse(extracted);
+        return {
+          ...normalized,
+          review_comment: formatReviewComment({ issues: normalized.issues, details: normalized.details, model }),
+        };
+      }
+
+      // If JSON extraction failed, return the raw text as the review
+      log.warn('Failed to extract JSON from response, using raw text');
+      return {
+        lgtm: false,
+        review_comment: formatReviewComment({ issues: [], details: responseText, model }),
+        issues: [],
+        details: responseText,
+      };
+    } catch (e) {
+      console.timeEnd('code-review-responses-api-no-schema cost');
       throw e;
     }
   }
@@ -277,18 +543,21 @@ export class Chat {
       try {
         const json = JSON.parse(res.choices[0].message.content || '');
         // Ensure issues and details exist with defaults
+        const issues = json.issues || [];
+        const details = json.details || json.review_comment || '';
         return {
           lgtm: json.lgtm || false,
-          review_comment: json.review_comment || '',
-          issues: json.issues || [],
-          details: json.details || json.review_comment || '',
+          review_comment: formatReviewComment({ issues, details, model }),
+          issues,
+          details,
         };
       } catch (e) {
+        const rawContent = res.choices[0].message.content || '';
         return {
           lgtm: false,
-          review_comment: res.choices[0].message.content || '',
+          review_comment: formatReviewComment({ issues: [], details: rawContent, model }),
           issues: [],
-          details: res.choices[0].message.content || '',
+          details: rawContent,
         };
       }
     }
@@ -318,11 +587,20 @@ export class Chat {
       };
     }
 
-    const model = process.env.MODEL || (this.isGithubModels ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+    const model =
+      process.env.MODEL ||
+      (this.isGithubModels ? 'openai/gpt-5.2-2025-12-11' : 'gpt-5.2-2025-12-11');
 
-    // Use Responses API for GPT-5.1+ models, Chat Completions API for others
+    // Use Responses API for GPT-5.1+ and GPT-5.2+ models, Chat Completions API for others
     if (this.isReasoningModel(model)) {
-      return await this.codeReviewWithResponsesAPI(patch, model);
+      // Check if model supports structured outputs (JSON schema)
+      if (this.supportsStructuredOutputs(model)) {
+        return await this.codeReviewWithResponsesAPI(patch, model);
+      } else {
+        // Use fallback method with JSON extraction for models without structured output support
+        log.debug(`Model ${model} does not support structured outputs, using JSON extraction`);
+        return await this.codeReviewWithResponsesAPINoSchema(patch, model);
+      }
     } else {
       return await this.codeReviewWithChatAPI(patch, model);
     }

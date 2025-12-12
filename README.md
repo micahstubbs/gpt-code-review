@@ -1,6 +1,6 @@
 # GPT 5.x PR Reviewer
 
-> AI-powered code review for Pull Requests using GPT-5.1, GPT-5.1-Codex, GPT-5-Pro, and GPT-4o
+> AI-powered code review for Pull Requests using GPT-5.2, GPT-5.2-Pro, GPT-5.1, and GPT-4o
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
 
@@ -72,16 +72,17 @@ jobs:
           # else use standard llm model
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL: gpt-5.1-codex # https://platform.openai.com/docs/models
+          MODEL: gpt-5.2-2025-12-11 # https://platform.openai.com/docs/models
           # Supported models include:
-          # - gpt-5.1-codex (recommended - optimized for code)
+          # - gpt-5.2-2025-12-11 (recommended - default model)
+          # - gpt-5.2-pro-2025-12-11 (premium tier for complex/critical reviews)
+          # - gpt-5.1-codex (optimized for code)
           # - gpt-5.1-codex-mini (cost-effective option)
           # - gpt-5.1 (general purpose)
-          # - gpt-5-pro (premium tier for critical reviews)
           # - gpt-4o, gpt-4o-mini (previous generation)
           # - gpt-3.5-turbo (legacy)
           #
-          # See docs/GPT-5.1-USAGE-GUIDE.md for detailed model comparison and pricing
+          # Note: GPT-5.2-Pro doesn't support structured outputs; JSON is extracted from response text
 
           # common
           LANGUAGE: Chinese
