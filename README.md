@@ -6,39 +6,65 @@
 
 Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
-## Bot Usage
+## Quick Start
 
-❗️⚠️ `Due to cost considerations, BOT is only used for testing purposes and is currently deployed on AWS Lambda with ratelimit restrictions. Therefore, unstable situations are completely normal. It is recommended to deploy an app by yourself.`
+### Option 1: Custom GitHub App (Recommended)
 
-### Install
+Use a custom GitHub App for branded reviews with your own name and avatar.
 
-Install: [GPT 5.x PR Reviewer](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
+**Setup:**
 
-### Configuration
+1. [Create a GitHub App](https://github.com/settings/apps/new) with:
+   - **Permissions**: Contents (Read), Pull requests (Write)
+   - **Webhook**: Disabled (not needed for Actions)
 
-1. Go to the repo homepage which you want integrate this bot
-2. click `settings`
-3. click `actions` under `secrets and variables`
-4. Change to `Variables` tab, create a new variable `OPENAI_API_KEY` with the value of your open api key (For Github Action integration, set it in secrets)
-   <img width="1465" alt="image" src="https://user-images.githubusercontent.com/13167934/218533628-3974b70f-c423-44b0-b096-d1ec2ace85ea.png">
+2. Generate and download a private key from your app settings
 
-### Start using
+3. Add secrets to your repository:
+   - `CODE_REVIEW_APP_ID` (as variable)
+   - `CODE_REVIEW_APP_PRIVATE_KEY` (as secret)
+   - `OPENAI_API_KEY` (as secret)
 
-1. The robot will automatically do the code review when you create a new Pull request, the review information will show in the pr timeline / file changes part.
-2. After `git push` update the pull request, cr bot will re-review the changed files
+4. Create `.github/workflows/cr.yml`:
 
-example:
+```yml
+name: Code Review
 
-[ChatGPT-CodeReview/pull/21](https://github.com/anc95/ChatGPT-CodeReview/pull/21)
+permissions:
+  contents: read
 
-<img width="1052" alt="image" src="https://user-images.githubusercontent.com/13167934/218999459-812206e1-d8d2-4900-8ce8-19b5b6e1f5cb.png">
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
 
-## Using Github Actions
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CODE_REVIEW_APP_ID }}
+          private-key: ${{ secrets.CODE_REVIEW_APP_PRIVATE_KEY }}
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GPT%205.x%20PR%20Reviewer-blue?logo=github)](https://github.com/marketplace/actions/gpt-5-x-pr-reviewer)
+      - name: GPT Code Review
+        uses: micahstubbs/gpt-code-review@v3
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: gpt-5.2-2025-12-11
+```
 
-1. add the `OPENAI_API_KEY` to your github actions secrets
-2. create `.github/workflows/cr.yml` add bellow content
+See the [Custom GitHub App Setup Guide](docs/custom-github-app-setup.md) for detailed instructions.
+
+### Option 2: Default GitHub Actions Bot
+
+Use the default `github-actions[bot]` identity (simpler setup).
+
+1. Add `OPENAI_API_KEY` to your repository secrets
+
+2. Create `.github/workflows/cr.yml`:
 
 ```yml
 name: Code Review
@@ -46,110 +72,113 @@ name: Code Review
 permissions:
   contents: read
   pull-requests: write
-  models: true # if you choose use github models, set this to be true
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
 jobs:
-  test:
-    # if: ${{ contains(github.event.*.labels.*.name, 'gpt review') }} # Optional; to run only when a label is attached
+  review:
     runs-on: ubuntu-latest
     steps:
-      - uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
+      - uses: micahstubbs/gpt-code-review@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          # if use github models https://github.com/marketplace/models
-          USE_GITHUB_MODELS: true
-          MODEL: openai/gpt-4o
-
-          # else if use azure deployment
-          AZURE_API_VERSION: xx
-          AZURE_DEPLOYMENT: xx
-
-          # else use standard llm model
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL: gpt-5.2-2025-12-11 # https://platform.openai.com/docs/models
-          # Supported models include:
-          # - gpt-5.2-2025-12-11 (recommended - default model)
-          # - gpt-5.2-pro-2025-12-11 (premium tier for complex/critical reviews)
-          # - gpt-5.1-codex (optimized for code)
-          # - gpt-5.1-codex-mini (cost-effective option)
-          # - gpt-5.1 (general purpose)
-          # - gpt-4o, gpt-4o-mini (previous generation)
-          # - gpt-3.5-turbo (legacy)
-          #
-          # Note: GPT-5.2-Pro doesn't support structured outputs; JSON is extracted from response text
-
-          # common
-          LANGUAGE: Chinese
-          PROMPT: # example: Please check if there are any confusions or irregularities in the following code diff:
-          top_p: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-top_p
-          temperature: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-temperature
-          max_tokens: 10000
-          MAX_PATCH_LENGTH: 10000 # if the patch/diff length is large than MAX_PATCH_LENGTH, will be ignored and won't review. By default, with no MAX_PATCH_LENGTH set, there is also no limit for the patch/diff length.
-          IGNORE_PATTERNS: /node_modules/**/*,*.md # glob pattern or regex pattern to ignore files, separated by comma
-          INCLUDE_PATTERNS: *.js,*.ts # glob pattern or regex pattern to include files, separated by comma
+          MODEL: gpt-5.2-2025-12-11
 ```
 
-## Custom Bot Identity
+## Configuration Options
 
-By default, review comments appear from "github-actions[bot]". To use a custom name and avatar, you can create your own GitHub App.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MODEL` | OpenAI model to use | `gpt-5.2-2025-12-11` |
+| `LANGUAGE` | Response language | English |
+| `PROMPT` | Custom review prompt | (built-in) |
+| `MAX_PATCH_LENGTH` | Skip files with larger diffs | unlimited |
+| `IGNORE_PATTERNS` | Glob patterns to ignore | none |
+| `INCLUDE_PATTERNS` | Glob patterns to include | all |
+| `REASONING_EFFORT` | GPT-5.x reasoning level | medium |
+| `VERBOSITY` | Response detail level | medium |
 
-See the [Custom GitHub App Setup Guide](docs/custom-github-app-setup.md) for step-by-step instructions, or use the [example workflow](examples/custom-app-workflow.yml).
+### Supported Models
+
+| Model | Description |
+|-------|-------------|
+| `gpt-5.2-2025-12-11` | Recommended - excellent balance of quality and cost |
+| `gpt-5.2-pro-2025-12-11` | Premium tier for complex/critical reviews |
+| `gpt-5.1-codex` | Optimized for code review |
+| `gpt-5.1-codex-mini` | Cost-effective option |
+| `gpt-5.1` | General purpose |
+| `gpt-4o`, `gpt-4o-mini` | Previous generation |
+
+### Alternative Providers
+
+**GitHub Models:**
+```yml
+env:
+  USE_GITHUB_MODELS: true
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  MODEL: openai/gpt-4o
+```
+
+**Azure OpenAI:**
+```yml
+env:
+  AZURE_API_VERSION: 2024-02-15-preview
+  AZURE_DEPLOYMENT: your-deployment-name
+  OPENAI_API_ENDPOINT: https://your-resource.openai.azure.com
+  OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+```
 
 ## Self-hosting
 
-1. clone code
-2. copy `.env.example` to `.env`, and fill the env variables
-3. install deps and run
+For webhook-based deployment (instead of GitHub Actions):
+
+1. Clone the repository
+2. Copy `.env.example` to `.env` and configure
+3. Install and run:
 
 ```sh
-npm i
-npm i -g pm2
-npm run build
+yarn install
+yarn build
 pm2 start pm2.config.cjs
 ```
 
-[probot](https://probot.github.io/docs/development/) for more detail
-
-## Dev
-
-### Setup
-
-```sh
-# Install dependencies
-npm install
-
-# Build code
-npm run build
-
-# Run the bot
-npm run start
-```
+See [Probot documentation](https://probot.github.io/docs/development/) for details.
 
 ### Docker
 
 ```sh
-# 1. Build container
-docker build -t cr-bot .
+docker build -t gpt-code-review .
+docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> gpt-code-review
+```
 
-# 2. Start container
-docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> cr-bot
+## Development
+
+```sh
+# Install dependencies
+yarn install
+
+# Build
+yarn build
+
+# Run tests
+yarn test
+
+# Start locally
+yarn start
 ```
 
 ## Contributing
 
-If you have suggestions for how cr-bot could be improved, or want to report a bug, open an issue! We'd love all and any contributions.
+If you have suggestions or want to report a bug, [open an issue](https://github.com/micahstubbs/gpt-code-review/issues).
 
 For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## Credit
 
-this project is inpired by [codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)
+This project is inspired by [codereview.gpt](https://github.com/sturdy-dev/codereview.gpt)
 
 ## License
 

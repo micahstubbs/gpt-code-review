@@ -1,12 +1,12 @@
 {
-  "name": "cr-bot",
-  "version": "1.0.0",
+  "name": "gpt-code-review",
+  "version": "3.0.0",
   "private": true,
-  "description": "A Probot app",
+  "description": "An AI Code Reviewer powered by OpenAI's GPT 5.x family of models",
   "author": "anc95",
   "license": "ISC",
   "type": "module",
-  "homepage": "https://github.com//",
+  "homepage": "https://github.com/micahstubbs/gpt-code-review",
   "keywords": [
     "probot",
     "github",

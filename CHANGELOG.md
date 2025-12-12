@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-12-11
+
+### Added
+
+- **Custom GitHub App Support**: Users can now create their own GitHub App for branded code review comments with custom name and avatar instead of "github-actions[bot]" (#64)
+- Added comprehensive setup guide at `docs/custom-github-app-setup.md` with step-by-step instructions
+- Added example workflow at `examples/custom-app-workflow.yml` demonstrating custom app integration
+- Added `getModel()` method to Chat class to expose the configured model ID
+- Review body now dynamically shows the model ID (e.g., "Code review by gpt-5.2-2025-12-11")
+
+### Changed
+
+- **BREAKING:** Repository renamed from `ChatGPT-CodeReview` to `gpt-code-review`
+- **BREAKING:** Default model changed from `gpt-4o` to `gpt-5.2-2025-12-11`
+- Simplified review comment format: removed "Code Review Summary" header and horizontal rule
+- Review comments now start directly with "Issues Found" section
+- Updated workflow to use `actions/create-github-app-token@v2` for custom app authentication
+
+### Migration Guide
+
+**Action Reference:**
+
+```yaml
+# Before (v2.x)
+- uses: micahstubbs/ChatGPT-CodeReview@v2.0.0
+
+# After (v3.x)
+- uses: micahstubbs/gpt-code-review@v3
+```
+
+**Custom Bot Identity (Optional):**
+
+To use a custom GitHub App instead of "github-actions[bot]":
+
+1. Create a GitHub App at https://github.com/settings/apps/new
+2. Store `APP_ID` as variable and private key as secret
+3. Use `actions/create-github-app-token@v2` before this action
+4. See `docs/custom-github-app-setup.md` for full instructions
+
 ## [Unreleased]
 
 ### Security
