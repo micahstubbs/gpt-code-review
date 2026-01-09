@@ -238,6 +238,45 @@ When working on significant features or fixes:
 5. Create PR when complete
 6. Open the PR in the user's default browser
 
+### Changelog and Releases
+
+**IMPORTANT:** Always update `CHANGELOG.md` before creating a release or tag.
+
+1. Add a new version section following [Keep a Changelog](https://keepachangelog.com/) format
+2. Document all notable changes under appropriate categories:
+   - **Added** - New features
+   - **Changed** - Changes to existing functionality
+   - **Fixed** - Bug fixes
+   - **Removed** - Removed features
+   - **Security** - Security-related changes
+3. Include issue/PR references where applicable (e.g., `(#66)`)
+4. Commit the changelog update before tagging the release
+5. Update both the version tag (e.g., `v3.1.0`) and floating major tag (e.g., `v3`)
+
+**Release checklist:**
+
+```bash
+# 1. Update CHANGELOG.md with new version section
+# 2. Update version in package.json
+# 3. Commit changes
+git add CHANGELOG.md package.json
+git commit -m "Bump version to X.Y.Z"
+
+# 4. Push to main
+git push origin main
+
+# 5. Create GitHub release
+gh release create vX.Y.Z --title "vX.Y.Z - Release Title" --notes-file - <<EOF
+Release notes here...
+
+**Full Changelog**: [CHANGELOG.md](https://github.com/micahstubbs/gpt-code-review/blob/main/CHANGELOG.md#xyz---yyyy-mm-dd)
+EOF
+
+# 6. Update floating major tag
+git tag -f vX vX.Y.Z
+git push origin vX --force
+```
+
 ## Parallel Development Workflow
 
 ### Git Worktrees
