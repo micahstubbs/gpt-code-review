@@ -6,6 +6,8 @@ import log from 'loglevel';
 
 const OPENAI_API_KEY = 'OPENAI_API_KEY';
 const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LENGTH : Infinity;
+
+// Command to trigger on-demand code review via PR comment
 const TRIGGER_COMMAND = '/gpt-review';
 
 export const robot = (app: Probot) => {
