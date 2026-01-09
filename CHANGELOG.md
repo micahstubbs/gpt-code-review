@@ -44,6 +44,28 @@ To use a custom GitHub App instead of "github-actions[bot]":
 3. Use `actions/create-github-app-token@v2` before this action
 4. See `docs/custom-github-app-setup.md` for full instructions
 
+## [3.1.0] - 2026-01-09
+
+### Added
+
+- **On-Demand Reviews**: Comment `/gpt-review` on any open PR to trigger a code review on-demand (#66)
+  - Useful for re-reviewing after changes, reviewing older PRs, or getting fresh reviews
+  - Bot adds 👀 reaction to acknowledge the command before starting review
+- **User-Friendly Error Messages**: OpenAI API errors now post helpful comments on PRs with:
+  - Clear error descriptions (quota exceeded, rate limited, invalid API key, auth failed)
+  - Direct links to [OpenAI Billing](https://platform.openai.com/settings/organization/billing/overview)
+  - Actionable fix instructions
+
+### Changed
+
+- Refactored `bot.ts` to extract shared `performReview()` function for both PR events and comment triggers
+- Updated `action.yml` description to mention `/gpt-review` comment trigger
+- Updated workflow example in README to include `issue_comment` event
+
+### Fixed
+
+- Improved error handling to catch and report OpenAI API errors instead of failing silently
+
 ## [Unreleased]
 
 ### Security
