@@ -271,6 +271,59 @@ git checkout 25/fix-404-authorization-bug
 # Both can be modified simultaneously without interference
 ```
 
+## Issue Tracking with Beads
+
+This project uses **beads** (`bd`) for issue tracking and **beads_viewer** (`bv`) for visualization.
+
+### Quick Reference
+
+```bash
+bd ready              # Find available work
+bd show <id>          # View issue details
+bd update <id> --status in_progress  # Claim work
+bd close <id>         # Complete work
+bd sync               # Sync with git
+```
+
+### Using bv as an AI sidecar
+
+`bv` is a graph-aware triage engine for Beads projects. Use `--robot-*` flags for deterministic, dependency-aware outputs with precomputed metrics.
+
+**CRITICAL: Use ONLY `--robot-*` flags. Bare `bv` launches an interactive TUI that blocks your session.**
+
+#### The Workflow: Start With Triage
+
+```bash
+bv --robot-triage     # THE MEGA-COMMAND: start here
+bv --robot-next       # Minimal: just the single top pick + claim command
+```
+
+#### Other Commands
+
+| Command | Returns |
+|---------|---------|
+| `--robot-plan` | Parallel execution tracks with `unblocks` lists |
+| `--robot-priority` | Priority misalignment detection |
+| `--robot-insights` | Full metrics: PageRank, betweenness, critical path, cycles |
+| `--robot-history` | Bead-to-commit correlations |
+| `--robot-diff --diff-since <ref>` | Changes since ref |
+| `--robot-alerts` | Stale issues, blocking cascades, priority mismatches |
+
+### Session Completion (Landing the Plane)
+
+When ending a work session, you MUST complete ALL steps:
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+
 ## Important Notes
 
 - **Use yarn, not npm** - Project uses Yarn Classic (v1)
