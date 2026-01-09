@@ -7,8 +7,74 @@ import log from 'loglevel';
 const OPENAI_API_KEY = 'OPENAI_API_KEY';
 const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LENGTH : Infinity;
 const TRIGGER_COMMAND = '/gpt-review';
+const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
+
+// Helper to detect OpenAI API errors and return user-friendly messages
+const getOpenAIErrorMessage = (error: unknown): string | null => {
+  const errorStr = String(error);
+  const errorMessage = error instanceof Error ? error.message : errorStr;
+
+  // Check for common OpenAI API errors
+  if (errorMessage.includes('insufficient_quota') || errorMessage.includes('exceeded your current quota')) {
+    return `**OpenAI API Quota Exceeded**
+
+Your OpenAI API key has exceeded its usage quota. To fix this:
+
+1. Visit [OpenAI Billing](${OPENAI_BILLING_URL}) to add credits
+2. Wait a few minutes for the quota to refresh
+3. Try again by commenting \`/gpt-review\``;
+  }
+
+  if (errorMessage.includes('rate_limit') || errorMessage.includes('429')) {
+    return `**OpenAI API Rate Limited**
+
+Too many requests to the OpenAI API. Please wait a moment and try again.
+
+If this persists, check your [OpenAI Billing & Usage](${OPENAI_BILLING_URL}) for rate limit details.`;
+  }
+
+  if (errorMessage.includes('invalid_api_key') || errorMessage.includes('Incorrect API key')) {
+    return `**Invalid OpenAI API Key**
+
+The configured OpenAI API key is invalid. To fix this:
+
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
+2. Update the \`OPENAI_API_KEY\` variable with a valid key from [OpenAI API Keys](https://platform.openai.com/api-keys)`;
+  }
+
+  if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
+    return `**OpenAI Authentication Failed**
+
+Unable to authenticate with the OpenAI API. Please verify your API key is correctly configured.
+
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
+2. Check that \`OPENAI_API_KEY\` is set correctly`;
+  }
+
+  // Not an OpenAI error we recognize
+  return null;
+};
 
 export const robot = (app: Probot) => {
+  // Helper to post error comments on PRs
+  const postErrorComment = async (
+    context: Context,
+    repo: { owner: string; repo: string },
+    pullNumber: number,
+    message: string
+  ) => {
+    try {
+      await context.octokit.issues.createComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: pullNumber,
+        body: message,
+      });
+    } catch (e) {
+      log.error('Failed to post error comment', e);
+    }
+  };
+
   const loadChat = async (context: Context, issueNumber?: number) => {
     if (process.env.USE_GITHUB_MODELS === 'true' && process.env.GITHUB_TOKEN) {
       return new Chat(process.env.GITHUB_TOKEN);
@@ -240,18 +306,28 @@ export const robot = (app: Probot) => {
       return 'invalid PR state';
     }
 
-    const result = await performReview(
-      context,
-      repo,
-      chat,
-      pullNumber,
-      pullRequest.base.sha,
-      pullRequest.head.sha,
-      false // not a sync event, review all changes
-    );
+    try {
+      const result = await performReview(
+        context,
+        repo,
+        chat,
+        pullNumber,
+        pullRequest.base.sha,
+        pullRequest.head.sha,
+        false // not a sync event, review all changes
+      );
 
-    log.info('successfully reviewed via comment trigger', pullRequest.html_url);
-    return result;
+      log.info('successfully reviewed via comment trigger', pullRequest.html_url);
+      return result;
+    } catch (e) {
+      const errorMessage = getOpenAIErrorMessage(e);
+      if (errorMessage) {
+        await postErrorComment(context, repo, pullNumber, errorMessage);
+        return 'openai error';
+      }
+      // Re-throw non-OpenAI errors
+      throw e;
+    }
   });
 
   app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
@@ -283,18 +359,30 @@ export const robot = (app: Probot) => {
     }
 
     const isSync = context.payload.action === 'synchronize';
-    const result = await performReview(
-      context,
-      repo,
-      chat,
-      context.pullRequest().pull_number,
-      pull_request.base.sha,
-      pull_request.head.sha,
-      isSync
-    );
+    const pullNumber = context.pullRequest().pull_number;
 
-    log.info('successfully reviewed', pull_request.html_url);
-    return result;
+    try {
+      const result = await performReview(
+        context,
+        repo,
+        chat,
+        pullNumber,
+        pull_request.base.sha,
+        pull_request.head.sha,
+        isSync
+      );
+
+      log.info('successfully reviewed', pull_request.html_url);
+      return result;
+    } catch (e) {
+      const errorMessage = getOpenAIErrorMessage(e);
+      if (errorMessage) {
+        await postErrorComment(context, repo, pullNumber, errorMessage);
+        return 'openai error';
+      }
+      // Re-throw non-OpenAI errors
+      throw e;
+    }
   });
 };
 
