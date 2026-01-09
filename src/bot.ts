@@ -6,9 +6,10 @@ import log from 'loglevel';
 
 const OPENAI_API_KEY = 'OPENAI_API_KEY';
 const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LENGTH : Infinity;
+const TRIGGER_COMMAND = '/gpt-review';
 
 export const robot = (app: Probot) => {
-  const loadChat = async (context: Context) => {
+  const loadChat = async (context: Context, issueNumber?: number) => {
     if (process.env.USE_GITHUB_MODELS === 'true' && process.env.GITHUB_TOKEN) {
       return new Chat(process.env.GITHUB_TOKEN);
     }
@@ -35,63 +36,41 @@ export const robot = (app: Probot) => {
 
       return new Chat(data.value);
     } catch {
+      const prNumber = issueNumber || context.pullRequest().pull_number;
       await context.octokit.issues.createComment({
         repo: repo.repo,
         owner: repo.owner,
-        issue_number: context.pullRequest().pull_number,
-        body: `Seems you are using me but didn't get OPENAI_API_KEY seted in Variables/Secrets for this repo. you could follow [readme](https://github.com/anc95/ChatGPT-CodeReview) for more information`,
+        issue_number: prNumber,
+        body: `Seems you are using me but didn't get OPENAI_API_KEY seted in Variables/Secrets for this repo. you could follow [readme](https://github.com/micahstubbs/gpt-code-review) for more information`,
       });
       return null;
     }
   };
 
-  app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
-    const repo = context.repo();
-    const chat = await loadChat(context);
-
-    if (!chat) {
-      log.info('Chat initialized failed');
-      return 'no chat';
-    }
-
-    const pull_request = context.payload.pull_request;
-
-    log.debug('pull_request:', pull_request);
-
-    if (pull_request.state === 'closed' || pull_request.locked) {
-      log.info('invalid event payload');
-      return 'invalid event payload';
-    }
-
-    const target_label = process.env.TARGET_LABEL;
-    if (
-      target_label &&
-      (!pull_request.labels?.length ||
-        pull_request.labels.every((label) => label.name !== target_label))
-    ) {
-      log.info('no target label attached');
-      return 'no target label attached';
-    }
-
+  // Core review logic - shared between pull_request and issue_comment handlers
+  const performReview = async (
+    context: Context,
+    repo: { owner: string; repo: string },
+    chat: Chat,
+    pullNumber: number,
+    baseSha: string,
+    headSha: string,
+    isSync: boolean = false
+  ) => {
     const data = await context.octokit.repos.compareCommits({
       owner: repo.owner,
       repo: repo.repo,
-      base: context.payload.pull_request.base.sha,
-      head: context.payload.pull_request.head.sha,
+      base: baseSha,
+      head: headSha,
     });
 
     let { files: changedFiles, commits } = data.data;
 
-    log.debug(
-      'compareCommits, base:',
-      context.payload.pull_request.base.sha,
-      'head:',
-      context.payload.pull_request.head.sha
-    );
+    log.debug('compareCommits, base:', baseSha, 'head:', headSha);
     log.debug('compareCommits.commits:', commits);
     log.debug('compareCommits.files', changedFiles);
 
-    if (context.payload.action === 'synchronize' && commits.length >= 2) {
+    if (isSync && commits.length >= 2) {
       const {
         data: { files },
       } = await context.octokit.repos.compareCommits({
@@ -167,10 +146,10 @@ export const robot = (app: Probot) => {
           const patchLines = patch.split('\n');
           // Find first line after @@ header (safe position for comment)
           let position = 1;
-          for (let i = 0; i < patchLines.length; i++) {
-            if (patchLines[i].startsWith('@@')) {
+          for (let j = 0; j < patchLines.length; j++) {
+            if (patchLines[j].startsWith('@@')) {
               // Position is 1-indexed, and we want the line after header
-              position = i + 2; // +1 for index→line, +1 for line after header
+              position = j + 2; // +1 for index→line, +1 for line after header
               break;
             }
           }
@@ -188,12 +167,13 @@ export const robot = (app: Probot) => {
         throw e;
       }
     }
+
     try {
       const modelId = chat.getModel();
       await context.octokit.pulls.createReview({
         repo: repo.repo,
         owner: repo.owner,
-        pull_number: context.pullRequest().pull_number,
+        pull_number: pullNumber,
         body: ress.length ? `Code review by ${modelId}` : 'LGTM 👍',
         event: 'COMMENT',
         commit_id: commits[commits.length - 1].sha,
@@ -205,9 +185,116 @@ export const robot = (app: Probot) => {
     }
 
     console.timeEnd('gpt cost');
-    log.info('successfully reviewed', context.payload.pull_request.html_url);
-
     return 'success';
+  };
+
+  // Handle issue comments for /gpt-review trigger
+  app.on('issue_comment.created', async (context) => {
+    const { comment, issue } = context.payload;
+
+    // Check if comment contains the trigger command
+    if (!comment.body.includes(TRIGGER_COMMAND)) {
+      log.debug('Comment does not contain trigger command, skipping');
+      return 'no trigger';
+    }
+
+    // Check if this is a PR comment (not a regular issue)
+    if (!issue.pull_request) {
+      log.info('Comment is not on a pull request, skipping');
+      return 'not a PR';
+    }
+
+    const repo = context.repo();
+    const pullNumber = issue.number;
+
+    log.info(`Triggered by ${TRIGGER_COMMAND} command on PR #${pullNumber}`);
+
+    // Add a reaction to acknowledge the command
+    try {
+      await context.octokit.reactions.createForIssueComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: comment.id,
+        content: 'eyes',
+      });
+    } catch (e) {
+      log.debug('Failed to add reaction', e);
+    }
+
+    const chat = await loadChat(context, pullNumber);
+
+    if (!chat) {
+      log.info('Chat initialized failed');
+      return 'no chat';
+    }
+
+    // Fetch the PR details
+    const { data: pullRequest } = await context.octokit.pulls.get({
+      owner: repo.owner,
+      repo: repo.repo,
+      pull_number: pullNumber,
+    });
+
+    if (pullRequest.state === 'closed' || pullRequest.locked) {
+      log.info('PR is closed or locked');
+      return 'invalid PR state';
+    }
+
+    const result = await performReview(
+      context,
+      repo,
+      chat,
+      pullNumber,
+      pullRequest.base.sha,
+      pullRequest.head.sha,
+      false // not a sync event, review all changes
+    );
+
+    log.info('successfully reviewed via comment trigger', pullRequest.html_url);
+    return result;
+  });
+
+  app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
+    const repo = context.repo();
+    const chat = await loadChat(context);
+
+    if (!chat) {
+      log.info('Chat initialized failed');
+      return 'no chat';
+    }
+
+    const pull_request = context.payload.pull_request;
+
+    log.debug('pull_request:', pull_request);
+
+    if (pull_request.state === 'closed' || pull_request.locked) {
+      log.info('invalid event payload');
+      return 'invalid event payload';
+    }
+
+    const target_label = process.env.TARGET_LABEL;
+    if (
+      target_label &&
+      (!pull_request.labels?.length ||
+        pull_request.labels.every((label) => label.name !== target_label))
+    ) {
+      log.info('no target label attached');
+      return 'no target label attached';
+    }
+
+    const isSync = context.payload.action === 'synchronize';
+    const result = await performReview(
+      context,
+      repo,
+      chat,
+      context.pullRequest().pull_number,
+      pull_request.base.sha,
+      pull_request.head.sha,
+      isSync
+    );
+
+    log.info('successfully reviewed', pull_request.html_url);
+    return result;
   });
 };
 

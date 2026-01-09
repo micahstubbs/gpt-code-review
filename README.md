@@ -27,6 +27,15 @@ The easiest way to get started - install our GitHub App and it will automaticall
 
 Reviews appear with the GPT-5.2 branding and avatar.
 
+### On-Demand Reviews
+
+You can also trigger a review on-demand by commenting `/gpt-review` on any open Pull Request. This is useful for:
+- Re-reviewing after making changes
+- Reviewing PRs that were opened before the app was installed
+- Getting a fresh review on an existing PR
+
+The bot will add an 👀 reaction to acknowledge the command, then post a review.
+
 <details>
 <summary><strong>Option 2: GitHub Actions (Self-hosted)</strong></summary>
 
@@ -46,10 +55,18 @@ permissions:
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created]
 
 jobs:
   review:
     runs-on: ubuntu-latest
+    # Run on PR events OR when /gpt-review comment is posted on a PR
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/gpt-review'))
     steps:
       - uses: micahstubbs/gpt-code-review@v3
         env:
