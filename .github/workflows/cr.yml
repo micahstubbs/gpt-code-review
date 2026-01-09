@@ -7,6 +7,8 @@ permissions:
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -16,8 +18,10 @@ on:
 
 jobs:
   code-review:
-    # Only run on PRs authored by micahstubbs
-    if: github.event.pull_request.user.login == 'micahstubbs'
+    # Run on PR events from micahstubbs OR /gpt-review comment on a PR
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'micahstubbs') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/gpt-review'))
     runs-on: ubuntu-latest
     steps:
       # Generate installation token from custom GitHub App
@@ -28,10 +32,8 @@ jobs:
           app-id: ${{ vars.CODE_REVIEW_APP_ID }}
           private-key: ${{ secrets.CODE_REVIEW_APP_PRIVATE_KEY }}
 
-      - name: Checkout PR branch
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
