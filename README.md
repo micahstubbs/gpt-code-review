@@ -90,6 +90,7 @@ jobs:
 | `REASONING_EFFORT` | GPT-5.x reasoning level | medium |
 | `VERBOSITY` | Response detail level | medium |
 | `AUTO_REVIEW` | Enable automatic reviews on PR open/sync | `true` |
+| `REQUIRE_MAINTAINER_REVIEW` | Restrict `/gpt-review` to maintainers | `true` (public repos) |
 
 ### On-Demand Only Mode
 
@@ -102,6 +103,31 @@ env:
 ```
 
 With this configuration, the bot will not review PRs automatically when they are opened or updated. Instead, reviews only happen when a user explicitly requests one by commenting `/gpt-review`.
+
+### Maintainer-Only Reviews
+
+By default, the `/gpt-review` command is restricted to repository maintainers (users with write access or higher) on **public repositories**. This protects repository owners from community members inadvertently consuming their OpenAI API tokens.
+
+**Default behavior:**
+- **Public repos:** Only maintainers can use `/gpt-review`
+- **Private repos:** Anyone with access can use `/gpt-review`
+
+To override the default behavior:
+
+```yml
+env:
+  # Allow anyone to trigger reviews (not recommended for public repos)
+  REQUIRE_MAINTAINER_REVIEW: false
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Or to enforce maintainer-only mode even on private repos:
+
+```yml
+env:
+  REQUIRE_MAINTAINER_REVIEW: true
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
 
 ### Supported Models
 

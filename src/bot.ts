@@ -20,6 +20,27 @@ const isAutoReviewEnabled = (): boolean => {
   return !['false', '0', 'off', 'no', 'disabled'].includes(value);
 };
 
+// Check if maintainer review restriction is enabled
+// Returns: true (require maintainer), false (allow anyone), or null (use default based on repo visibility)
+const getMaintainerReviewSetting = (): boolean | null => {
+  const value = process.env.REQUIRE_MAINTAINER_REVIEW?.toLowerCase();
+  if (value === undefined || value === '') {
+    return null; // Use default based on repo visibility
+  }
+  // Explicitly enabled
+  if (['true', '1', 'on', 'yes', 'enabled'].includes(value)) {
+    return true;
+  }
+  // Explicitly disabled
+  if (['false', '0', 'off', 'no', 'disabled'].includes(value)) {
+    return false;
+  }
+  return null; // Invalid value, use default
+};
+
+// Permission levels that are considered "maintainer" level
+const MAINTAINER_PERMISSIONS = ['admin', 'maintain', 'write'];
+
 // Helper to detect OpenAI API errors and return user-friendly messages
 const getOpenAIErrorMessage = (error: unknown): string | null => {
   const errorStr = String(error);
@@ -83,6 +104,57 @@ export const robot = (app: Probot) => {
       });
     } catch (e) {
       log.error('Failed to post error comment', e);
+    }
+  };
+
+  // Check if user has maintainer-level permissions on the repository
+  const checkUserPermission = async (
+    context: Context,
+    repo: { owner: string; repo: string },
+    username: string
+  ): Promise<{ hasPermission: boolean; permission: string }> => {
+    try {
+      const { data } = await context.octokit.repos.getCollaboratorPermissionLevel({
+        owner: repo.owner,
+        repo: repo.repo,
+        username: username,
+      });
+      const permission = data.permission;
+      const hasPermission = MAINTAINER_PERMISSIONS.includes(permission);
+      log.debug(`User ${username} has permission: ${permission}, maintainer: ${hasPermission}`);
+      return { hasPermission, permission };
+    } catch (e) {
+      log.error(`Failed to check permission for ${username}`, e);
+      // If we can't check permissions, deny by default for safety
+      return { hasPermission: false, permission: 'unknown' };
+    }
+  };
+
+  // Determine if maintainer restriction should be enforced
+  const shouldRequireMaintainer = async (
+    context: Context,
+    repo: { owner: string; repo: string }
+  ): Promise<boolean> => {
+    const setting = getMaintainerReviewSetting();
+
+    // If explicitly configured, use that setting
+    if (setting !== null) {
+      return setting;
+    }
+
+    // Default behavior: require maintainer for public repos, allow anyone for private
+    try {
+      const { data: repoData } = await context.octokit.repos.get({
+        owner: repo.owner,
+        repo: repo.repo,
+      });
+      const isPublic = !repoData.private;
+      log.debug(`Repository ${repo.owner}/${repo.repo} is ${isPublic ? 'public' : 'private'}`);
+      return isPublic; // Require maintainer for public repos by default
+    } catch (e) {
+      log.error('Failed to get repository visibility', e);
+      // If we can't determine visibility, be safe and require maintainer
+      return true;
     }
   };
 
@@ -283,8 +355,39 @@ export const robot = (app: Probot) => {
 
     const repo = context.repo();
     const pullNumber = issue.number;
+    const commenter = comment.user.login;
 
-    log.info(`Triggered by ${TRIGGER_COMMAND} command on PR #${pullNumber}`);
+    log.info(`Triggered by ${TRIGGER_COMMAND} command on PR #${pullNumber} by ${commenter}`);
+
+    // Check if maintainer restriction is enabled and user has permission
+    const requireMaintainer = await shouldRequireMaintainer(context, repo);
+    if (requireMaintainer) {
+      const { hasPermission, permission } = await checkUserPermission(context, repo, commenter);
+      if (!hasPermission) {
+        log.info(`User ${commenter} lacks permission (${permission}) to trigger review`);
+        // Add a thumbs down reaction to indicate permission denied
+        try {
+          await context.octokit.reactions.createForIssueComment({
+            owner: repo.owner,
+            repo: repo.repo,
+            comment_id: comment.id,
+            content: '-1',
+          });
+        } catch (e) {
+          log.debug('Failed to add rejection reaction', e);
+        }
+        // Post a comment explaining why the command was rejected
+        await postErrorComment(
+          context,
+          repo,
+          pullNumber,
+          `@${commenter} The \`/gpt-review\` command is restricted to repository maintainers (users with write access or higher). ` +
+            `This protects the repository owner's OpenAI API tokens from unauthorized usage.\n\n` +
+            `If you need a code review, please ask a maintainer to run the command.`
+        );
+        return 'permission denied';
+      }
+    }
 
     // Add a reaction to acknowledge the command
     try {
