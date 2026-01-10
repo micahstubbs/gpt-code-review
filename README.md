@@ -25,6 +25,8 @@ The easiest way to get started - install our GitHub App and it will automaticall
 
    > **Important:** The GitHub App requires a **repository variable** (not a secret). Repository secrets cannot be read by external apps - only GitHub Actions workflows can access secrets.
 
+   > **Security Note:** Repository variables are stored in plain text. For **public repositories** where security is a concern, consider using [GitHub Actions mode](#option-2-github-actions-self-hosted) instead, which supports encrypted secrets. See [Security Considerations](#security-considerations) below.
+
 4. **Done!** The bot will automatically review new Pull Requests
 
 Reviews appear with the GPT-5.2 branding and avatar.
@@ -208,6 +210,40 @@ yarn start
 ```
 
 </details>
+
+## Security Considerations
+
+### API Key Storage: Variables vs Secrets
+
+| Mode | Storage | Encrypted | Recommended For |
+|------|---------|-----------|-----------------|
+| **GitHub App** | Repository Variable | No (plain text) | Private repos, convenience |
+| **GitHub Actions** | Repository Secret | Yes | Public repos, security-sensitive |
+
+**Why the difference?**
+- GitHub Apps run on external servers and can only access what the GitHub API exposes
+- Repository **secrets** are encrypted and intentionally NOT exposed via API (for security)
+- Repository **variables** are plain text and accessible via API
+
+### Recommendations
+
+**For public repositories:** Use **GitHub Actions mode** with repository secrets. This keeps your API key encrypted and never exposed.
+
+**For private repositories:** GitHub App mode with repository variables is acceptable since only collaborators with settings access can view variables.
+
+### Built-in Protections
+
+This bot includes several security measures:
+- API keys are automatically redacted from error logs (pattern: `sk-*`)
+- Error messages never include sensitive data
+- The `REQUIRE_MAINTAINER_REVIEW` option (default for public repos) prevents unauthorized users from triggering reviews
+
+### Best Practices
+
+1. **Rotate API keys regularly** - Create a new key every 30-90 days
+2. **Set usage limits** - Configure spending limits on your OpenAI account
+3. **Monitor usage** - Check OpenAI dashboard for unexpected activity
+4. **Use separate keys** - Don't reuse API keys across projects
 
 ## Contributing
 

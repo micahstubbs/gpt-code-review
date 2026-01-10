@@ -9,6 +9,17 @@ const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LE
 const TRIGGER_COMMAND = '/gpt-review';
 const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
 
+// Security: Sanitize errors to prevent API key leakage in logs
+// OpenAI API keys start with 'sk-' and are 51+ characters
+const API_KEY_PATTERN = /sk-[a-zA-Z0-9_-]{20,}/g;
+const sanitizeError = (error: unknown): string => {
+  const errorStr = error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
+  // Replace any API keys with [REDACTED]
+  return errorStr.replace(API_KEY_PATTERN, '[REDACTED_API_KEY]');
+};
+
 // Check if automatic reviews are enabled (defaults to true for backward compatibility)
 const isAutoReviewEnabled = (): boolean => {
   const value = process.env.AUTO_REVIEW?.toLowerCase();
@@ -103,7 +114,7 @@ export const robot = (app: Probot) => {
         body: message,
       });
     } catch (e) {
-      log.error('Failed to post error comment', e);
+      log.error('Failed to post error comment:', sanitizeError(e));
     }
   };
 
@@ -124,7 +135,7 @@ export const robot = (app: Probot) => {
       log.debug(`User ${username} has permission: ${permission}, maintainer: ${hasPermission}`);
       return { hasPermission, permission };
     } catch (e) {
-      log.error(`Failed to check permission for ${username}`, e);
+      log.error(`Failed to check permission for ${username}:`, sanitizeError(e));
       // If we can't check permissions, deny by default for safety
       return { hasPermission: false, permission: 'unknown' };
     }
@@ -152,7 +163,7 @@ export const robot = (app: Probot) => {
       log.debug(`Repository ${repo.owner}/${repo.repo} is ${isPublic ? 'public' : 'private'}`);
       return isPublic; // Require maintainer for public repos by default
     } catch (e) {
-      log.error('Failed to get repository visibility', e);
+      log.error('Failed to get repository visibility:', sanitizeError(e));
       // If we can't determine visibility, be safe and require maintainer
       return true;
     }
@@ -323,7 +334,7 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for more inform
           });
         }
       } catch (e) {
-        log.info(`review ${file.filename} failed`, e);
+        log.info(`review ${file.filename} failed:`, sanitizeError(e));
         throw e;
       }
     }
@@ -340,7 +351,7 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for more inform
         comments: ress,
       });
     } catch (e) {
-      log.info(`Failed to create review`, e);
+      log.info('Failed to create review:', sanitizeError(e));
       throw e;
     }
 
