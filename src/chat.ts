@@ -277,7 +277,9 @@ export class Chat {
     const prompt = `${basePrompt}${styleInstruction} ${answerLanguage}\n\nCode patch:\n${patch}`;
 
     try {
-      const res = await this.openai.responses.create({
+      log.info(`🤖 Starting code review with ${model} (reasoning effort: ${process.env.REASONING_EFFORT || 'medium'})...`);
+
+      const stream = await this.openai.responses.create({
         model: model,
         input: prompt,
         reasoning: {
@@ -330,9 +332,45 @@ export class Chat {
             strict: true,
           },
         },
+        stream: true,
       });
 
+      // Process streaming events and collect final response
+      let finalResponse: any = null;
+      let lastLogTime = Date.now();
+      const LOG_INTERVAL = 2000; // Log progress every 2 seconds
+      let charCount = 0;
+
+      for await (const event of stream) {
+        const eventType = (event as any).type;
+
+        // Log progress periodically
+        const now = Date.now();
+        if (eventType === 'response.in_progress' && now - lastLogTime > LOG_INTERVAL) {
+          log.info('⏳ Review in progress...');
+          lastLogTime = now;
+        }
+
+        // Track text generation progress
+        if (eventType === 'response.output_text.delta') {
+          charCount += ((event as any).delta || '').length;
+          if (charCount > 0 && now - lastLogTime > LOG_INTERVAL) {
+            log.info(`📝 Generating review... (${charCount} chars)`);
+            lastLogTime = now;
+          }
+        }
+
+        // Capture final completed response
+        if (eventType === 'response.completed') {
+          finalResponse = (event as any).response;
+          log.info('✅ Review completed');
+        }
+      }
+
       console.timeEnd('code-review-responses-api cost');
+
+      // Use the final response from the stream
+      const res = finalResponse;
 
       // Extract structured output from output array
       if (res.output && res.output.length > 0) {
@@ -438,7 +476,9 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
     const prompt = `${basePrompt}${styleInstruction}${jsonFormatInstruction} ${answerLanguage}\n\nCode patch:\n${patch}`;
 
     try {
-      const res = await this.openai.responses.create({
+      log.info(`🤖 Starting code review with ${model} (reasoning effort: ${process.env.REASONING_EFFORT || 'medium'})...`);
+
+      const stream = await this.openai.responses.create({
         model: model,
         input: prompt,
         reasoning: {
@@ -448,9 +488,45 @@ IMPORTANT: Respond with ONLY a valid JSON object in this exact format (no markdo
           verbosity: this.getValidVerbosity(model),
           // No format specification - use plain text
         },
+        stream: true,
       });
 
+      // Process streaming events and collect final response
+      let finalResponse: any = null;
+      let lastLogTime = Date.now();
+      const LOG_INTERVAL = 2000; // Log progress every 2 seconds
+      let charCount = 0;
+
+      for await (const event of stream) {
+        const eventType = (event as any).type;
+
+        // Log progress periodically
+        const now = Date.now();
+        if (eventType === 'response.in_progress' && now - lastLogTime > LOG_INTERVAL) {
+          log.info('⏳ Review in progress...');
+          lastLogTime = now;
+        }
+
+        // Track text generation progress
+        if (eventType === 'response.output_text.delta') {
+          charCount += ((event as any).delta || '').length;
+          if (charCount > 0 && now - lastLogTime > LOG_INTERVAL) {
+            log.info(`📝 Generating review... (${charCount} chars)`);
+            lastLogTime = now;
+          }
+        }
+
+        // Capture final completed response
+        if (eventType === 'response.completed') {
+          finalResponse = (event as any).response;
+          log.info('✅ Review completed');
+        }
+      }
+
       console.timeEnd('code-review-responses-api-no-schema cost');
+
+      // Use the final response from the stream
+      const res = finalResponse;
 
       // Extract text from response
       let responseText = '';

@@ -369,6 +369,19 @@ env:
 4. **Set severity expectations** - Help the model distinguish between critical bugs and minor style issues
 5. **Tune file patterns** - Use `INCLUDE_PATTERNS` and `IGNORE_PATTERNS` to focus on source code and skip generated files
 
+### Streaming Progress Visibility
+
+When using GPT-5.1+ models (gpt-5.1, gpt-5.2, gpt-5.2-pro), the code reviewer automatically streams responses from the OpenAI API. This provides real-time progress updates in GitHub Actions logs, so you can see what the model is doing while processing reviews.
+
+**Progress indicators:**
+
+- 🤖 Starting code review with model details
+- ⏳ Review in progress (logged every 2 seconds)
+- 📝 Generating review with character count
+- ✅ Review completed
+
+This feature is especially useful for large files or complex reviews that may take longer to process. Note that reasoning tokens are not shown in the stream (they are encrypted by OpenAI), but you'll see the model actively generating the review text.
+
 ## Contributing
 
 If you have suggestions or want to report a bug, [open an issue](https://github.com/micahstubbs/gpt-code-review/issues).
