@@ -295,6 +295,80 @@ This bot includes several security measures:
 3. **Monitor usage** - Check OpenAI dashboard for unexpected activity
 4. **Use separate keys** - Don't reuse API keys across projects
 
+## Usage Tips
+
+### Writing Effective Custom Prompts
+
+The default prompt works well for general code review, but you can dramatically improve review quality by customizing the `PROMPT` variable for your specific project. A tailored prompt helps the model understand your tech stack, architecture patterns, and the types of issues most relevant to your codebase.
+
+**Template for project-specific prompts:**
+
+```yml
+env:
+  PROMPT: |
+    Review this code patch for [brief project description].
+
+    TECH STACK:
+    - Frontend: [e.g., React with Redux, Vue 3, Angular, Svelte]
+    - Backend: [e.g., Node.js/Express, Django, Rails, Go]
+    - Database: [e.g., PostgreSQL, MongoDB, Redis]
+    - Other: [e.g., GraphQL, WebSockets, message queues, cloud services]
+
+    FOCUS AREAS:
+    1. SECURITY: [e.g., auth bypasses, injection attacks, XSS, CSRF, secrets exposure]
+    2. [FRAMEWORK] PATTERNS: [e.g., proper state management, hook usage, middleware patterns]
+    3. DATA INTEGRITY: [e.g., race conditions, transactions, validation]
+    4. ERROR HANDLING: [e.g., proper error boundaries, logging, user feedback]
+    5. PERFORMANCE: [e.g., N+1 queries, memory leaks, unnecessary re-renders]
+
+    FLAG ISSUES BY SEVERITY:
+    - CRITICAL: Security vulnerabilities, data loss risks
+    - HIGH: Logic errors, broken functionality
+    - MEDIUM: Code quality, maintainability
+    - LOW: Style, minor optimizations
+
+    Be concise. Skip obvious changes. Focus on non-trivial issues.
+```
+
+**Example for a full-stack web application:**
+
+```yml
+env:
+  PROMPT: |
+    Review this code patch for a task management web application.
+
+    TECH STACK:
+    - Frontend: React 18 with TypeScript, Redux Toolkit, RTK Query
+    - Backend: Node.js with Express, Prisma ORM
+    - Database: PostgreSQL with Redis caching
+    - Auth: JWT with refresh tokens, OAuth2 (Google, GitHub)
+
+    FOCUS AREAS:
+    1. SECURITY: SQL injection, XSS, CSRF, JWT handling, OAuth state validation, secrets in code
+    2. REACT PATTERNS: Hook dependencies, memoization, component composition, TypeScript types
+    3. API DESIGN: REST conventions, error responses, input validation, rate limiting
+    4. DATA INTEGRITY: Transaction handling, optimistic updates, cache invalidation
+    5. PERFORMANCE: Bundle size, lazy loading, query optimization, connection pooling
+
+    FLAG ISSUES BY SEVERITY:
+    - CRITICAL: Security vulnerabilities, data loss risks
+    - HIGH: Logic errors, broken functionality
+    - MEDIUM: Code quality, maintainability
+    - LOW: Style, minor optimizations
+
+    Be concise. Skip obvious changes. Focus on non-trivial issues that could cause problems in production.
+  IGNORE_PATTERNS: node_modules/**/*,*.md,*.lock,dist/**/*,coverage/**/*
+  INCLUDE_PATTERNS: src/**/*,api/**/*,lib/**/*,.github/**/*
+```
+
+**Tips for effective prompts:**
+
+1. **Be specific about your stack** - Mention exact frameworks and versions so the model understands idioms and best practices
+2. **Prioritize security concerns** - List the vulnerability types most relevant to your architecture
+3. **Include domain context** - Briefly describe what the application does to help identify business logic issues
+4. **Set severity expectations** - Help the model distinguish between critical bugs and minor style issues
+5. **Tune file patterns** - Use `INCLUDE_PATTERNS` and `IGNORE_PATTERNS` to focus on source code and skip generated files
+
 ## Contributing
 
 If you have suggestions or want to report a bug, [open an issue](https://github.com/micahstubbs/gpt-code-review/issues).
