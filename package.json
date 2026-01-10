@@ -3,7 +3,7 @@
   "version": "3.2.0",
   "private": true,
   "description": "An AI Code Reviewer powered by OpenAI's GPT 5.x family of models",
-  "author": "anc95",
+  "author": "micahstubbs",
   "license": "ISC",
   "type": "module",
   "homepage": "https://github.com/micahstubbs/gpt-code-review",
