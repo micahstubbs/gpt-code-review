@@ -282,6 +282,36 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instr
     console.time('gpt cost');
 
     const ress = [];
+    const startTime = Date.now();
+    const BATCH_SIZE = 20; // Post review every 20 files
+    const BATCH_INTERVAL_MS = 30 * 60 * 1000; // Post review every 30 minutes
+    const TOKEN_WARNING_MS = 40 * 60 * 1000; // Warn at 40 minutes
+    let lastBatchTime = startTime;
+    let reviewBatchNumber = 1;
+
+    // Helper function to post accumulated review comments
+    const postReviewBatch = async (comments: any[], batchLabel: string) => {
+      if (comments.length === 0) return;
+
+      const elapsedMinutes = Math.floor((Date.now() - startTime) / 1000 / 60);
+      const modelId = chat.getModel();
+
+      try {
+        await context.octokit.pulls.createReview({
+          repo: repo.repo,
+          owner: repo.owner,
+          pull_number: pullNumber,
+          body: `Code review by ${modelId} (${batchLabel}, ${comments.length} comments, ${elapsedMinutes}m elapsed)`,
+          event: 'COMMENT',
+          commit_id: commits[commits.length - 1].sha,
+          comments: comments,
+        });
+        log.info(`✓ Posted review batch: ${batchLabel} with ${comments.length} comments (${elapsedMinutes}m elapsed)`);
+      } catch (e) {
+        log.error(`Failed to post review batch ${batchLabel}:`, sanitizeError(e));
+        throw e;
+      }
+    };
 
     for (let i = 0; i < changedFiles.length; i++) {
       const file = changedFiles[i];
@@ -295,6 +325,13 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instr
         log.info(`${file.filename} skipped caused by its diff is too large`);
         continue;
       }
+
+      // Check elapsed time and warn if approaching token expiration
+      const elapsedMs = Date.now() - startTime;
+      if (elapsedMs > TOKEN_WARNING_MS && i < changedFiles.length - 1) {
+        log.warn(`⚠️  Review has been running for ${Math.floor(elapsedMs / 1000 / 60)} minutes. GitHub App tokens expire after 1 hour. Consider using fewer files per review or a faster model.`);
+      }
+
       try {
         const res = await chat?.codeReview(patch);
         if (!res.lgtm && !!res.review_comment) {
@@ -319,26 +356,42 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instr
             position: position,
           });
         }
+
+        // Post batch if we've accumulated enough comments OR enough time has passed
+        const timeSinceLastBatch = Date.now() - lastBatchTime;
+        const shouldPostBatch = ress.length >= BATCH_SIZE || timeSinceLastBatch >= BATCH_INTERVAL_MS;
+
+        if (shouldPostBatch && ress.length > 0) {
+          await postReviewBatch(ress, `batch ${reviewBatchNumber}`);
+          ress.length = 0; // Clear the array
+          lastBatchTime = Date.now();
+          reviewBatchNumber++;
+        }
       } catch (e) {
         log.info(`review ${file.filename} failed:`, sanitizeError(e));
         throw e;
       }
     }
 
-    try {
-      const modelId = chat.getModel();
-      await context.octokit.pulls.createReview({
-        repo: repo.repo,
-        owner: repo.owner,
-        pull_number: pullNumber,
-        body: ress.length ? `Code review by ${modelId}` : 'LGTM 👍',
-        event: 'COMMENT',
-        commit_id: commits[commits.length - 1].sha,
-        comments: ress,
-      });
-    } catch (e) {
-      log.info('Failed to create review:', sanitizeError(e));
-      throw e;
+    // Post any remaining comments
+    if (ress.length > 0) {
+      await postReviewBatch(ress, reviewBatchNumber === 1 ? 'complete' : `batch ${reviewBatchNumber} (final)`);
+    } else if (reviewBatchNumber === 1) {
+      // No comments at all - post LGTM
+      try {
+        await context.octokit.pulls.createReview({
+          repo: repo.repo,
+          owner: repo.owner,
+          pull_number: pullNumber,
+          body: 'LGTM 👍',
+          event: 'COMMENT',
+          commit_id: commits[commits.length - 1].sha,
+          comments: [],
+        });
+      } catch (e) {
+        log.info('Failed to create review:', sanitizeError(e));
+        throw e;
+      }
     }
 
     console.timeEnd('gpt cost');

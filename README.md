@@ -382,6 +382,39 @@ When using GPT-5.1+ models (gpt-5.1, gpt-5.2, gpt-5.2-pro), the code reviewer au
 
 This feature is especially useful for large files or complex reviews that may take longer to process. Note that reasoning tokens are not shown in the stream (they are encrypted by OpenAI), but you'll see the model actively generating the review text.
 
+### Batch Posting for Long-Running Reviews
+
+To prevent token expiration on large PRs, the code reviewer automatically posts review comments in batches rather than waiting until all files are processed. This ensures your review work is never lost, even if processing takes longer than expected.
+
+**Batch posting triggers:**
+
+- Every 20 files reviewed
+- Every 30 minutes elapsed
+- When all files are processed (final batch)
+
+**Example log output:**
+```
+✓ Posted review batch: batch 1 with 18 comments (25m elapsed)
+✓ Posted review batch: batch 2 with 15 comments (45m elapsed)
+✓ Posted review batch: batch 3 (final) with 8 comments (52m elapsed)
+```
+
+**GitHub App Token Limitations:**
+
+When using `actions/create-github-app-token` for custom app identity, be aware that [installation access tokens expire after 1 hour](https://github.com/actions/create-github-app-token/issues/121). For very large PRs with slow models (GPT 5.2 Pro + high reasoning effort), you may see a warning:
+
+```
+⚠️  Review has been running for 40 minutes. GitHub App tokens expire after 1 hour.
+Consider using fewer files per review or a faster model.
+```
+
+**Mitigation strategies:**
+
+1. **Use built-in GITHUB_TOKEN** - Doesn't expire during job (up to 24 hours), but comments show as "github-actions[bot]"
+2. **Filter files more aggressively** - Use `INCLUDE_PATTERNS` to review only critical files
+3. **Use faster model/settings** - GPT 5.2 (non-Pro) or lower `REASONING_EFFORT`
+4. **Split large PRs** - Review in smaller, focused PRs instead of one massive change
+
 ## Contributing
 
 If you have suggestions or want to report a bug, [open an issue](https://github.com/micahstubbs/gpt-code-review/issues).
