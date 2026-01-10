@@ -7,7 +7,7 @@
 # Perfect for: Budget-conscious teams, high-volume repositories, smaller PRs
 #
 # To use this workflow:
-# 1. Copy this file to .github/workflows/cr.yml in your repository
+# 1. Copy this file to .github/workflows/gpt-code-review.yml in your repository
 # 2. Add your OPENAI_API_KEY to GitHub Secrets
 # 3. Ensure your OpenAI account has access to GPT-5.1 models
 

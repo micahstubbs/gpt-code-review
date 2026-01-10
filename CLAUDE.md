@@ -153,7 +153,7 @@ pm2 start pm2.config.cjs
 
 Use marketplace action: `anc95/ChatGPT-CodeReview@main`
 
-Workflow file: `.github/workflows/cr.yml`
+Workflow file: `.github/workflows/gpt-code-review.yml`
 
 ### 3. AWS Lambda
 

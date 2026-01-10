@@ -34,7 +34,7 @@
 
 1. `OPENAI_API_KEY`를 저장소 시크릿에 추가
 
-2. `.github/workflows/cr.yml` 생성:
+2. `.github/workflows/gpt-code-review.yml` 생성:
 
 ```yml
 name: Code Review

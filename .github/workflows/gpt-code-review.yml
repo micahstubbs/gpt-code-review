@@ -1,4 +1,4 @@
-name: Code Review
+name: GPT Code Review
 
 permissions:
   contents: read

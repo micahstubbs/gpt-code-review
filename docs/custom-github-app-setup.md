@@ -126,10 +126,10 @@ In your repository:
 
 ## Step 14: Update Your Workflow
 
-Update your `.github/workflows/cr.yml` to use the custom app:
+Update your `.github/workflows/gpt-code-review.yml` to use the custom app:
 
 ```yaml
-name: Code Review
+name: GPT Code Review
 
 permissions:
   contents: read

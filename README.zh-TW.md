@@ -34,7 +34,7 @@
 
 1. 將 `OPENAI_API_KEY` 添加到你的倉庫密鑰
 
-2. 創建 `.github/workflows/cr.yml`：
+2. 創建 `.github/workflows/gpt-code-review.yml`：
 
 ```yml
 name: Code Review

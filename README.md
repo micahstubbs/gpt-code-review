@@ -21,7 +21,7 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 
 **Step 2: Add the workflow**
 
-Create `.github/workflows/cr.yml` in your repository:
+Create `.github/workflows/gpt-code-review.yml` in your repository:
 
 ```yml
 name: Code Review
@@ -91,7 +91,7 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 
 **Step 4: Add the workflow**
 
-Create `.github/workflows/cr.yml`:
+Create `.github/workflows/gpt-code-review.yml`:
 
 ```yml
 name: Code Review

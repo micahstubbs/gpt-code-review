@@ -34,7 +34,7 @@
 
 1. `OPENAI_API_KEY` をリポジトリのシークレットに追加
 
-2. `.github/workflows/cr.yml` を作成：
+2. `.github/workflows/gpt-code-review.yml` を作成：
 
 ```yml
 name: Code Review
