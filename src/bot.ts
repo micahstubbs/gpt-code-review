@@ -190,7 +190,18 @@ export const robot = (app: Probot) => {
         repo: repo.repo,
         owner: repo.owner,
         issue_number: prNumber,
-        body: `Seems you are using me but didn't get OPENAI_API_KEY seted in Variables/Secrets for this repo. you could follow [readme](https://github.com/micahstubbs/gpt-code-review) for more information`,
+        body: `**OPENAI_API_KEY not found**
+
+For the GitHub App to access your API key, you must create a **repository variable** (not a secret):
+
+1. Go to **Settings** → **Secrets and variables** → **Actions**
+2. Click the **Variables** tab
+3. Click **New repository variable**
+4. Name: \`OPENAI_API_KEY\`, Value: your API key
+
+> **Note:** Repository secrets cannot be read by the GitHub App. Use a repository variable instead. For GitHub Actions mode (self-hosted), you can use secrets.
+
+See the [README](https://github.com/micahstubbs/gpt-code-review) for more information.`,
       });
       return null;
     }

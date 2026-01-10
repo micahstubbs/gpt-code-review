@@ -18,10 +18,12 @@ The easiest way to get started - install our GitHub App and it will automaticall
 
 3. **Configure your OpenAI API key**:
    - Go to your repository **Settings** → **Secrets and variables** → **Actions**
-   - Click the **Secrets** tab
-   - Click **New repository secret**
+   - Click the **Variables** tab
+   - Click **New repository variable**
    - Name: `OPENAI_API_KEY`
    - Value: Your OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
+
+   > **Important:** The GitHub App requires a **repository variable** (not a secret). Repository secrets cannot be read by external apps - only GitHub Actions workflows can access secrets.
 
 4. **Done!** The bot will automatically review new Pull Requests
 
