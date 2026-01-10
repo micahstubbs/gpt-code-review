@@ -9,6 +9,17 @@ const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LE
 const TRIGGER_COMMAND = '/gpt-review';
 const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
 
+// Check if automatic reviews are enabled (defaults to true for backward compatibility)
+const isAutoReviewEnabled = (): boolean => {
+  const value = process.env.AUTO_REVIEW?.toLowerCase();
+  // If not set, default to true (automatic reviews enabled)
+  if (value === undefined || value === '') {
+    return true;
+  }
+  // Explicitly disabled with 'false', '0', or 'off'
+  return !['false', '0', 'off', 'no', 'disabled'].includes(value);
+};
+
 // Helper to detect OpenAI API errors and return user-friendly messages
 const getOpenAIErrorMessage = (error: unknown): string | null => {
   const errorStr = String(error);
@@ -331,6 +342,12 @@ export const robot = (app: Probot) => {
   });
 
   app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
+    // Check if automatic reviews are disabled
+    if (!isAutoReviewEnabled()) {
+      log.info('Automatic reviews disabled (AUTO_REVIEW=false). Use /gpt-review to trigger.');
+      return 'auto review disabled';
+    }
+
     const repo = context.repo();
     const chat = await loadChat(context);
 

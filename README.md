@@ -89,6 +89,19 @@ jobs:
 | `INCLUDE_PATTERNS` | Glob patterns to include | all |
 | `REASONING_EFFORT` | GPT-5.x reasoning level | medium |
 | `VERBOSITY` | Response detail level | medium |
+| `AUTO_REVIEW` | Enable automatic reviews on PR open/sync | `true` |
+
+### On-Demand Only Mode
+
+To conserve OpenAI API tokens, you can disable automatic reviews and only trigger reviews when someone comments `/gpt-review` on a PR:
+
+```yml
+env:
+  AUTO_REVIEW: false
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+With this configuration, the bot will not review PRs automatically when they are opened or updated. Instead, reviews only happen when a user explicitly requests one by commenting `/gpt-review`.
 
 ### Supported Models
 
