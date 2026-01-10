@@ -4,7 +4,6 @@ import { minimatch } from 'minimatch';
 import { Chat } from './chat.js';
 import log from 'loglevel';
 
-const OPENAI_API_KEY = 'OPENAI_API_KEY';
 const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LENGTH : Infinity;
 const TRIGGER_COMMAND = '/gpt-review';
 const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
@@ -81,8 +80,8 @@ If this persists, check your [OpenAI Billing & Usage](${OPENAI_BILLING_URL}) for
 
 The configured OpenAI API key is invalid. To fix this:
 
-1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
-2. Update the \`OPENAI_API_KEY\` variable with a valid key from [OpenAI API Keys](https://platform.openai.com/api-keys)`;
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions** → **Secrets** tab
+2. Update the \`OPENAI_API_KEY\` secret with a valid key from [OpenAI API Keys](https://platform.openai.com/api-keys)`;
   }
 
   if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
@@ -90,8 +89,8 @@ The configured OpenAI API key is invalid. To fix this:
 
 Unable to authenticate with the OpenAI API. Please verify your API key is correctly configured.
 
-1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
-2. Check that \`OPENAI_API_KEY\` is set correctly`;
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions** → **Secrets** tab
+2. Check that \`OPENAI_API_KEY\` secret is set correctly`;
   }
 
   // Not an OpenAI error we recognize
@@ -178,44 +177,31 @@ export const robot = (app: Probot) => {
       return new Chat(process.env.OPENAI_API_KEY);
     }
 
+    // No API key found - post error message
     const repo = context.repo();
+    const prNumber = issueNumber || context.pullRequest().pull_number;
+    await context.octokit.issues.createComment({
+      repo: repo.repo,
+      owner: repo.owner,
+      issue_number: prNumber,
+      body: `**OPENAI_API_KEY not configured**
 
-    try {
-      const { data } = (await context.octokit.request(
-        'GET /repos/{owner}/{repo}/actions/variables/{name}',
-        {
-          owner: repo.owner,
-          repo: repo.repo,
-          name: OPENAI_API_KEY,
-        }
-      )) as any;
+To enable code reviews, add your OpenAI API key to your repository secrets:
 
-      if (!data?.value) {
-        return null;
-      }
+1. Go to **Settings** → **Secrets and variables** → **Actions** → **Secrets** tab
+2. Click **New repository secret**
+3. Name: \`OPENAI_API_KEY\`
+4. Value: Your API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
-      return new Chat(data.value);
-    } catch {
-      const prNumber = issueNumber || context.pullRequest().pull_number;
-      await context.octokit.issues.createComment({
-        repo: repo.repo,
-        owner: repo.owner,
-        issue_number: prNumber,
-        body: `**OPENAI_API_KEY not found**
+Then ensure your workflow passes the secret as an environment variable:
+\`\`\`yml
+env:
+  OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
+\`\`\`
 
-For the GitHub App to access your API key, you must create a **repository variable** (not a secret):
-
-1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. Click the **Variables** tab
-3. Click **New repository variable**
-4. Name: \`OPENAI_API_KEY\`, Value: your API key
-
-> **Note:** Repository secrets cannot be read by the GitHub App. Use a repository variable instead. For GitHub Actions mode (self-hosted), you can use secrets.
-
-See the [README](https://github.com/micahstubbs/gpt-code-review) for more information.`,
-      });
-      return null;
-    }
+See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instructions.`,
+    });
+    return null;
   };
 
   // Core review logic - shared between pull_request and issue_comment handlers

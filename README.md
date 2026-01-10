@@ -8,46 +8,20 @@ Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md)
 
 ## Quick Start
 
-### Install the GitHub App (Recommended)
+### Simple Setup (Recommended)
 
-The easiest way to get started - install our GitHub App and it will automatically review PRs.
+The simplest way to get started - just add your OpenAI API key and a workflow file.
 
-1. **Install the App**: [GPT-5.2 PR Review](https://github.com/apps/gpt-5-2-pr-review)
+**Step 1: Add your API key**
 
-2. **Select repositories** to enable code review on
+Go to your repository **Settings** → **Secrets and variables** → **Actions** → **Secrets** tab:
+- Click **New repository secret**
+- Name: `OPENAI_API_KEY`
+- Value: Your OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
-3. **Configure your OpenAI API key**:
-   - Go to your repository **Settings** → **Secrets and variables** → **Actions**
-   - Click the **Variables** tab
-   - Click **New repository variable**
-   - Name: `OPENAI_API_KEY`
-   - Value: Your OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
+**Step 2: Add the workflow**
 
-   > **Important:** The GitHub App requires a **repository variable** (not a secret). Repository secrets cannot be read by external apps - only GitHub Actions workflows can access secrets.
-
-   > **Security Note:** Repository variables are stored in plain text. For **public repositories** where security is a concern, consider using [GitHub Actions mode](#option-2-github-actions-self-hosted) instead, which supports encrypted secrets. See [Security Considerations](#security-considerations) below.
-
-4. **Done!** The bot will automatically review new Pull Requests
-
-Reviews appear with the GPT-5.2 branding and avatar.
-
-### On-Demand Reviews
-
-You can also trigger a review on-demand by commenting `/gpt-review` on any open Pull Request. This is useful for:
-- Re-reviewing after making changes
-- Reviewing PRs that were opened before the app was installed
-- Getting a fresh review on an existing PR
-
-The bot will add an 👀 reaction to acknowledge the command, then post a review.
-
-<details>
-<summary><strong>Option 2: GitHub Actions (Self-hosted)</strong></summary>
-
-Run as a GitHub Action in your own workflow with your own OpenAI API key.
-
-1. Add `OPENAI_API_KEY` to your repository secrets
-
-2. Create `.github/workflows/cr.yml`:
+Create `.github/workflows/cr.yml` in your repository:
 
 ```yml
 name: Code Review
@@ -79,7 +53,94 @@ jobs:
           MODEL: gpt-5.2-2025-12-11
 ```
 
+**Done!** Reviews will appear as `github-actions[bot]` comments, and your API key stays encrypted.
+
+<details>
+<summary><strong>Custom Branding Setup (Advanced)</strong></summary>
+
+For reviews with a custom bot name and avatar, create your own GitHub App:
+
+**Step 1: Create a GitHub App**
+
+1. Go to **Settings** → **Developer settings** → **GitHub Apps** → **New GitHub App**
+2. Configure:
+   - **Name:** Your custom bot name (e.g., "My Code Reviewer")
+   - **Homepage URL:** Your repository URL
+   - **Webhook:** Uncheck "Active" (not needed for this setup)
+   - **Permissions:**
+     - Repository → Pull requests: Read & write
+     - Repository → Contents: Read-only
+3. Click **Create GitHub App**
+4. Note the **App ID** shown on the app's settings page
+5. Scroll down and click **Generate a private key** - save the downloaded `.pem` file
+
+**Step 2: Install the App**
+
+1. On your app's settings page, click **Install App** in the left sidebar
+2. Select the repositories where you want code reviews
+
+**Step 3: Configure Secrets and Variables**
+
+Go to your repository **Settings** → **Secrets and variables** → **Actions**:
+
+| Type | Name | Value |
+|------|------|-------|
+| **Secret** | `OPENAI_API_KEY` | Your OpenAI API key |
+| **Secret** | `CODE_REVIEW_APP_PRIVATE_KEY` | Contents of the `.pem` file you downloaded |
+| **Variable** | `CODE_REVIEW_APP_ID` | App ID from Step 1 |
+
+**Step 4: Add the workflow**
+
+Create `.github/workflows/cr.yml`:
+
+```yml
+name: Code Review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/gpt-review'))
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CODE_REVIEW_APP_ID }}
+          private-key: ${{ secrets.CODE_REVIEW_APP_PRIVATE_KEY }}
+
+      - uses: micahstubbs/gpt-code-review@v3
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: gpt-5.2-2025-12-11
+```
+
+Reviews will now appear with your custom app's name and avatar.
+
 </details>
+
+### On-Demand Reviews
+
+Trigger a review on-demand by commenting `/gpt-review` on any open Pull Request. This is useful for:
+- Re-reviewing after making changes
+- Reviewing PRs that were opened before the workflow was added
+- Getting a fresh review on an existing PR
+
+The bot will add an 👀 reaction to acknowledge the command, then post a review.
 
 ## Configuration Options
 
@@ -213,23 +274,12 @@ yarn start
 
 ## Security Considerations
 
-### API Key Storage: Variables vs Secrets
+### API Key Storage
 
-| Mode | Storage | Encrypted | Recommended For |
-|------|---------|-----------|-----------------|
-| **GitHub App** | Repository Variable | No (plain text) | Private repos, convenience |
-| **GitHub Actions** | Repository Secret | Yes | Public repos, security-sensitive |
-
-**Why the difference?**
-- GitHub Apps run on external servers and can only access what the GitHub API exposes
-- Repository **secrets** are encrypted and intentionally NOT exposed via API (for security)
-- Repository **variables** are plain text and accessible via API
-
-### Recommendations
-
-**For public repositories:** Use **GitHub Actions mode** with repository secrets. This keeps your API key encrypted and never exposed.
-
-**For private repositories:** GitHub App mode with repository variables is acceptable since only collaborators with settings access can view variables.
+All API keys are stored as **repository secrets**, which are:
+- Encrypted at rest
+- Never exposed in logs
+- Only accessible to GitHub Actions workflows
 
 ### Built-in Protections
 
