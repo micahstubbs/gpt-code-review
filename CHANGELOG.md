@@ -81,6 +81,27 @@ To use a custom GitHub App instead of "github-actions[bot]":
 - OpenAI Responses API calls now use streaming mode (`stream: true`) for GPT-5.1+ models
 - Progress logging integrated into chat.ts for better user feedback during reviews
 
+## [3.3.0] - 2026-01-10
+
+### Added
+
+- **Batch Posting for Long-Running Reviews**: Reviews now post comments incrementally to prevent GitHub App token expiration
+  - Posts review comments every 20 files or every 30 minutes (whichever comes first)
+  - Displays batch number and elapsed time in review body (e.g., "batch 2, 15 comments, 35m elapsed")
+  - Adds warning at 40 minutes if approaching 1-hour token expiration limit
+  - Ensures review work is never lost on large PRs
+
+### Fixed
+
+- GitHub App token expiration on reviews taking longer than 1 hour (e.g., large PRs with GPT 5.2 Pro + high reasoning effort)
+- Previously all review work was lost if token expired before posting; now incremental batches ensure progress is saved
+
+### Documentation
+
+- Added "Batch Posting for Long-Running Reviews" section to README
+- Documented GitHub App token limitations (1-hour expiration)
+- Provided mitigation strategies for large PRs (use GITHUB_TOKEN, filter files, faster models, split PRs)
+
 ## [Unreleased]
 
 ### Security
