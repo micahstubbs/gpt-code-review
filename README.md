@@ -18,8 +18,8 @@ The easiest way to get started - install our GitHub App and it will automaticall
 
 3. **Configure your OpenAI API key**:
    - Go to your repository **Settings** → **Secrets and variables** → **Actions**
-   - Click the **Variables** tab
-   - Click **New repository variable**
+   - Click the **Secrets** tab
+   - Click **New repository secret**
    - Name: `OPENAI_API_KEY`
    - Value: Your OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
