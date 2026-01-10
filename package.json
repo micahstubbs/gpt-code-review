@@ -1,6 +1,6 @@
 {
   "name": "gpt-code-review",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "private": true,
   "description": "An AI Code Reviewer powered by OpenAI's GPT 5.x family of models",
   "author": "anc95",

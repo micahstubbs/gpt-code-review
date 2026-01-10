@@ -66,6 +66,21 @@ To use a custom GitHub App instead of "github-actions[bot]":
 
 - Improved error handling to catch and report OpenAI API errors instead of failing silently
 
+## [3.2.0] - 2026-01-10
+
+### Added
+
+- **Streaming Progress Visibility**: Real-time progress updates in GitHub Actions logs when using GPT-5.1+ models
+  - Shows progress indicators: 🤖 Starting, ⏳ In progress, 📝 Generating (with character count), ✅ Completed
+  - Updates logged every 2 seconds during review generation
+  - Provides visibility into what the model is doing during long-running reviews
+  - Implemented for both `codeReviewWithResponsesAPI` and `codeReviewWithResponsesAPINoSchema` methods
+
+### Changed
+
+- OpenAI Responses API calls now use streaming mode (`stream: true`) for GPT-5.1+ models
+- Progress logging integrated into chat.ts for better user feedback during reviews
+
 ## [Unreleased]
 
 ### Security
