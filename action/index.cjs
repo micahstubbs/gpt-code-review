@@ -139233,6 +139233,13 @@ const SUPPORTED_MODELS = [
         description: 'Code-focused reviews',
     },
     {
+        id: 'gpt-5.1-codex-max',
+        api: 'Responses',
+        speed: 'Fast',
+        cost: 'High',
+        description: 'Long-horizon agentic coding tasks',
+    },
+    {
         id: 'gpt-5.1-codex-mini',
         api: 'Responses',
         speed: 'Fast',

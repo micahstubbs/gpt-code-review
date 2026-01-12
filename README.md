@@ -174,6 +174,7 @@ This posts a comment with a table of supported models showing:
 - **gpt-5.2-2025-12-11**: Balanced default for most PRs
 - **gpt-5.2-pro-2025-12-11**: Deep analysis for complex or critical changes
 - **gpt-5.1-codex**: Specialized for code-heavy reviews
+- **gpt-5.1-codex-max**: Most intelligent coding model, optimized for long-horizon agentic coding tasks
 
 ## Configuration Options
 
