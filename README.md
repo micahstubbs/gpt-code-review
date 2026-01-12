@@ -142,6 +142,39 @@ Trigger a review on-demand by commenting `/gpt-review` on any open Pull Request.
 
 The bot will add an 👀 reaction to acknowledge the command, then post a review.
 
+#### Choosing a Model for On-Demand Reviews
+
+You can specify which model to use for a specific review by passing the model ID as an argument:
+
+```
+/gpt-review gpt-5.2-pro-2025-12-11
+```
+
+This overrides the `MODEL` environment variable for that review only. To see available models with their characteristics:
+
+```
+/gpt-review:get-models
+```
+
+This posts a comment with a table of supported models showing:
+- Model ID (for use with `/gpt-review <model-id>`)
+- API type (Responses or Chat Completions)
+- Relative speed and cost
+- Recommended use cases
+
+**Examples:**
+```bash
+/gpt-review                          # Use default model from workflow config
+/gpt-review gpt-4o-mini              # Quick, cost-effective review
+/gpt-review gpt-5.2-pro-2025-12-11   # Most thorough review (slower, more expensive)
+```
+
+**Why use different models?**
+- **gpt-4o-mini / gpt-3.5-turbo**: Fast, cheap reviews for simple changes
+- **gpt-5.2-2025-12-11**: Balanced default for most PRs
+- **gpt-5.2-pro-2025-12-11**: Deep analysis for complex or critical changes
+- **gpt-5.1-codex**: Specialized for code-heavy reviews
+
 ## Configuration Options
 
 | Variable | Description | Default |

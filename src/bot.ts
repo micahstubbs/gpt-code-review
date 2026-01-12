@@ -6,7 +6,123 @@ import log from 'loglevel';
 
 const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH ? +process.env.MAX_PATCH_LENGTH : Infinity;
 const TRIGGER_COMMAND = '/gpt-review';
+const GET_MODELS_COMMAND = '/gpt-review:get-models';
 const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
+
+// Supported models with metadata
+interface ModelInfo {
+  id: string;
+  api: 'Responses' | 'Chat';
+  speed: string;
+  cost: string;
+  description: string;
+}
+
+const SUPPORTED_MODELS: ModelInfo[] = [
+  {
+    id: 'gpt-5.2-2025-12-11',
+    api: 'Responses',
+    speed: 'Fast',
+    cost: 'Low',
+    description: 'Default, balanced performance',
+  },
+  {
+    id: 'gpt-5.2-pro-2025-12-11',
+    api: 'Responses',
+    speed: 'Slow',
+    cost: 'High',
+    description: 'Complex reviews, highest quality',
+  },
+  {
+    id: 'gpt-5.1',
+    api: 'Responses',
+    speed: 'Medium',
+    cost: 'Medium',
+    description: 'Enhanced reasoning',
+  },
+  {
+    id: 'gpt-5.1-codex',
+    api: 'Responses',
+    speed: 'Medium',
+    cost: 'Medium',
+    description: 'Code-focused reviews',
+  },
+  {
+    id: 'gpt-5.1-codex-mini',
+    api: 'Responses',
+    speed: 'Fast',
+    cost: 'Low',
+    description: 'Quick, cost-effective reviews',
+  },
+  {
+    id: 'gpt-4o',
+    api: 'Chat',
+    speed: 'Fast',
+    cost: 'Low',
+    description: 'Legacy support, reliable',
+  },
+  {
+    id: 'gpt-4o-mini',
+    api: 'Chat',
+    speed: 'Very Fast',
+    cost: 'Very Low',
+    description: 'Simple reviews, minimal cost',
+  },
+  {
+    id: 'gpt-3.5-turbo',
+    api: 'Chat',
+    speed: 'Very Fast',
+    cost: 'Very Low',
+    description: 'Basic reviews only',
+  },
+];
+
+// Parse model argument from comment body
+const parseModelArgument = (commentBody: string): string | null => {
+  // Match "/gpt-review <model>" pattern
+  const match = commentBody.match(/\/gpt-review\s+([^\s]+)/);
+  if (!match) return null;
+
+  const modelArg = match[1];
+
+  // Check if it's the get-models command
+  if (modelArg === ':get-models' || modelArg.startsWith(':')) {
+    return null; // Not a model argument
+  }
+
+  return modelArg;
+};
+
+// Validate model against supported list
+const isValidModel = (model: string): boolean => {
+  return SUPPORTED_MODELS.some((m) => m.id === model);
+};
+
+// Format supported models as markdown table
+const formatModelsTable = (): string => {
+  const header = `**Available Models for Code Review**
+
+| Model ID | API | Speed | Cost | Description |
+|----------|-----|-------|------|-------------|`;
+
+  const rows = SUPPORTED_MODELS.map(
+    (m) => `| \`${m.id}\` | ${m.api} | ${m.speed} | ${m.cost} | ${m.description} |`
+  ).join('\n');
+
+  const usage = `
+**Usage:**
+\`\`\`
+/gpt-review              # Use default model (${process.env.MODEL || 'gpt-5.2-2025-12-11'})
+/gpt-review <model-id>   # Use specific model
+\`\`\`
+
+**Example:**
+\`\`\`
+/gpt-review gpt-5.2-pro-2025-12-11
+\`\`\``;
+
+  return `${header}\n${rows}\n${usage}`;
+};
 
 // Security: Sanitize errors to prevent API key leakage in logs
 // OpenAI API keys start with 'sk-' and are 51+ characters
@@ -168,13 +284,33 @@ export const robot = (app: Probot) => {
     }
   };
 
-  const loadChat = async (context: Context, issueNumber?: number) => {
-    if (process.env.USE_GITHUB_MODELS === 'true' && process.env.GITHUB_TOKEN) {
-      return new Chat(process.env.GITHUB_TOKEN);
+  const loadChat = async (context: Context, issueNumber?: number, modelOverride?: string) => {
+    // Temporarily override MODEL env var if specified
+    const originalModel = process.env.MODEL;
+    if (modelOverride) {
+      process.env.MODEL = modelOverride;
+      log.info(`Overriding MODEL env var with: ${modelOverride}`);
     }
 
-    if (process.env.OPENAI_API_KEY) {
-      return new Chat(process.env.OPENAI_API_KEY);
+    let chat: Chat | null = null;
+
+    if (process.env.USE_GITHUB_MODELS === 'true' && process.env.GITHUB_TOKEN) {
+      chat = new Chat(process.env.GITHUB_TOKEN);
+    } else if (process.env.OPENAI_API_KEY) {
+      chat = new Chat(process.env.OPENAI_API_KEY);
+    }
+
+    // Restore original MODEL env var
+    if (modelOverride) {
+      if (originalModel) {
+        process.env.MODEL = originalModel;
+      } else {
+        delete process.env.MODEL;
+      }
+    }
+
+    if (chat) {
+      return chat;
     }
 
     // No API key found - post error message
@@ -418,6 +554,50 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instr
     const pullNumber = issue.number;
     const commenter = comment.user.login;
 
+    // Handle /gpt-review:get-models command
+    if (comment.body.includes(GET_MODELS_COMMAND)) {
+      log.info(`${GET_MODELS_COMMAND} command triggered on PR #${pullNumber} by ${commenter}`);
+
+      try {
+        await context.octokit.issues.createComment({
+          owner: repo.owner,
+          repo: repo.repo,
+          issue_number: pullNumber,
+          body: formatModelsTable(),
+        });
+        log.info('Posted available models table');
+        return 'models listed';
+      } catch (e) {
+        log.error('Failed to post models table:', sanitizeError(e));
+        return 'failed to list models';
+      }
+    }
+
+    // Parse model argument if provided
+    const requestedModel = parseModelArgument(comment.body);
+    let modelOverride: string | undefined;
+
+    if (requestedModel) {
+      if (isValidModel(requestedModel)) {
+        modelOverride = requestedModel;
+        log.info(`Using requested model: ${requestedModel}`);
+      } else {
+        // Invalid model - post error and exit
+        log.warn(`Invalid model requested: ${requestedModel}`);
+        try {
+          await context.octokit.issues.createComment({
+            owner: repo.owner,
+            repo: repo.repo,
+            issue_number: pullNumber,
+            body: `@${commenter} Invalid model \`${requestedModel}\`. Use \`${GET_MODELS_COMMAND}\` to see available models.`,
+          });
+        } catch (e) {
+          log.error('Failed to post invalid model error:', sanitizeError(e));
+        }
+        return 'invalid model';
+      }
+    }
+
     log.info(`Triggered by ${TRIGGER_COMMAND} command on PR #${pullNumber} by ${commenter}`);
 
     // Check if maintainer restriction is enabled and user has permission
@@ -462,7 +642,7 @@ See the [README](https://github.com/micahstubbs/gpt-code-review) for setup instr
       log.debug('Failed to add reaction', e);
     }
 
-    const chat = await loadChat(context, pullNumber);
+    const chat = await loadChat(context, pullNumber, modelOverride);
 
     if (!chat) {
       log.info('Chat initialized failed');
