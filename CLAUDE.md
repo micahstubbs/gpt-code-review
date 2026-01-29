@@ -317,11 +317,11 @@ This project uses **beads** (`br`) for issue tracking and **beads_viewer** (`bv`
 ### Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+br ready              # Find available work
+br show <id>          # View issue details
+br update <id> --status in_progress  # Claim work
+br close <id>         # Complete work
+br sync               # Sync with git
 ```
 
 ### Using bv as an AI sidecar
