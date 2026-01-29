@@ -312,7 +312,7 @@ git checkout 25/fix-404-authorization-bug
 
 ## Issue Tracking with Beads
 
-This project uses **beads** (`bd`) for issue tracking and **beads_viewer** (`bv`) for visualization.
+This project uses **beads** (`br`) for issue tracking and **beads_viewer** (`bv`) for visualization.
 
 ### Quick Reference
 
@@ -428,7 +428,7 @@ When ending a work session, you MUST complete ALL steps:
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   br sync
    git push
    git status  # MUST show "up to date with origin"
    ```
